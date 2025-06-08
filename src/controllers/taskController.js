@@ -12,7 +12,7 @@ const supabase = createClient(
 const UPLOAD_FOLDER_NAME = "nevtik"; // bucket dan folder di supabase storage
 
 const projectRoot = process.cwd(); // Root direktori proyek
- // Hilangkan './' jika ada
+// Hilangkan './' jika ada
 
 // --- Helper Functions ---
 const handleNotImplemented = (req, res) =>
@@ -33,12 +33,10 @@ const createTask = async (req, res) => {
   const authorId = req.user.id;
 
   if (!title || !description || !submissionStartDate || !deadline) {
-    return res
-      .status(400)
-      .json({
-        message:
-          "Judul, deskripsi, tanggal mulai pengumpulan, dan deadline dibutuhkan.",
-      });
+    return res.status(400).json({
+      message:
+        "Judul, deskripsi, tanggal mulai pengumpulan, dan deadline dibutuhkan.",
+    });
   }
   const startDate = new Date(submissionStartDate);
   const endDate = new Date(deadline);
@@ -85,16 +83,18 @@ const getAllTasks = async (req, res) => {
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { name: true, email: true } },
-        _count: { // Untuk menghitung total submission (berguna untuk admin/mentor)
+        _count: {
+          // Untuk menghitung total submission (berguna untuk admin/mentor)
           select: { submissions: true },
-        }
+        },
       },
     });
 
     // Jika pengguna adalah siswa, coba dapatkan submission mereka untuk setiap tugas
-    if (userRole === 'STUDENT') {
-      const taskIds = tasks.map(task => task.id);
-      if (taskIds.length > 0) { // Hanya query jika ada tugas
+    if (userRole === "STUDENT") {
+      const taskIds = tasks.map((task) => task.id);
+      if (taskIds.length > 0) {
+        // Hanya query jika ada tugas
         const submissions = await prisma.submission.findMany({
           where: {
             taskId: { in: taskIds },
@@ -105,21 +105,21 @@ const getAllTasks = async (req, res) => {
             grade: true,
             submittedAt: true,
             // Anda bisa pilih field lain dari submission jika perlu ditampilkan di kartu
-          }
+          },
         });
 
         // Buat map untuk akses cepat ke submission berdasarkan taskId
         const submissionsMap = new Map();
-        submissions.forEach(sub => submissionsMap.set(sub.taskId, sub));
+        submissions.forEach((sub) => submissionsMap.set(sub.taskId, sub));
 
         // Tambahkan informasi mySubmission ke setiap tugas
-        tasks = tasks.map(task => ({
+        tasks = tasks.map((task) => ({
           ...task,
           mySubmission: submissionsMap.get(task.id) || null,
         }));
       } else {
         // Jika tidak ada tugas, pastikan setiap tugas (jika ada) memiliki mySubmission: null
-         tasks = tasks.map(task => ({
+        tasks = tasks.map((task) => ({
           ...task,
           mySubmission: null,
         }));
@@ -277,75 +277,72 @@ const patchTask = async (req, res) => {
     res.json({ message: "Tugas berhasil di-patch.", task: patchedTask });
   } catch (error) {
     console.error("Patch task error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal melakukan patch pada tugas.",
-        error: error.message,
+    res.status(500).json({
+      message: "Gagal melakukan patch pada tugas.",
+      error: error.message,
+    });
+  }
+};
+const deleteTask = async (req, res) => {
+  const { submissionId } = req.params;
+
+  try {
+    const submission = await prisma.submission.findUnique({
+      where: { id: submissionId },
+    });
+
+    if (!submission) {
+      return res.status(404).json({ message: "Submission tidak ditemukan." });
+    }
+
+    if (!submission.fileUrl) {
+      return res.status(400).json({
+        message: "File untuk submission ini tidak ada atau sudah dihapus.",
       });
+    }
+
+    // Ambil nama file dari URL publik Supabase Storage
+    // Misal URL seperti https://xyz.supabase.co/storage/v1/object/public/nevtik/filename.ext
+    const urlParts = submission.fileUrl.split("/");
+    const fileName = urlParts[urlParts.length - 1];
+
+    // Hapus file dari Supabase Storage
+    const { error: deleteError } = await supabase.storage
+      .from(UPLOAD_FOLDER_NAME)
+      .remove([fileName]);
+
+    if (deleteError) {
+      console.error("Gagal menghapus file di Supabase Storage:", deleteError);
+      return res.status(500).json({
+        message: "Gagal menghapus file di penyimpanan.",
+        error: deleteError.message,
+      });
+    }
+
+    // Update database submission, kosongkan fileUrl dan tambahkan komentar
+    const updatedSubmission = await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        fileUrl: null,
+        comment: `${submission.comment || ""} [File dihapus oleh admin ${
+          req.user.email
+        } pada ${new Date().toISOString()}]`.trim(),
+      },
+    });
+
+    res.json({
+      message: "File submission berhasil dihapus dari penyimpanan Supabase.",
+      submission: updatedSubmission,
+    });
+  } catch (error) {
+    console.error("Delete submission file error:", error);
+    res.status(500).json({
+      message: "Gagal menghapus file submission.",
+      error: error.message,
+    });
   }
 };
 
-const deleteTask = async (req, res) => {
-  // DELETE
-  const { taskId } = req.params;
-  const userId = req.user.id;
-  try {
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (!task)
-      return res.status(404).json({ message: "Tugas tidak ditemukan." });
-    if (task.authorId !== userId && req.user.role !== "ADMIN") {
-      return res
-        .status(403)
-        .json({ message: "Anda tidak berhak menghapus tugas ini." });
-    }
-    const submissions = await prisma.submission.findMany({
-      where: { taskId: taskId },
-    });
-    for (const sub of submissions) {
-      if (sub.fileUrl) {
-        // sub.fileUrl adalah /uploads/filename.ext
-        // Kita butuh path absolut ke file di server
-        const fileName = path.basename(sub.fileUrl);
-        const oldFilePath = path.join(
-          projectRoot,
-          UPLOAD_FOLDER_NAME,
-          fileName
-        );
-        try {
-          if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
-            console.log(
-              `File ${oldFilePath} berhasil dihapus saat menghapus tugas.`
-            );
-          }
-        } catch (err) {
-          console.error(
-            `Gagal menghapus file ${oldFilePath} saat menghapus tugas:`,
-            err
-          );
-        }
-      }
-    }
-    await prisma.submission.deleteMany({ where: { taskId: taskId } });
-    await prisma.task.delete({ where: { id: taskId } });
-    res.json({
-      message: "Tugas dan semua file submission terkait berhasil dihapus.",
-    });
-  } catch (error) {
-    console.error("Delete task error:", error);
-    if (error.code === "P2003")
-      return res
-        .status(400)
-        .json({
-          message:
-            "Gagal menghapus tugas. Hapus dulu semua submission terkait.",
-        });
-    res
-      .status(500)
-      .json({ message: "Gagal menghapus tugas.", error: error.message });
-  }
-};
 
 // --- /api/tasks/:taskId/submit ---
 
@@ -448,12 +445,10 @@ const getSubmissionsForTask = async (req, res) => {
     res.json(submissions);
   } catch (error) {
     console.error("Get submissions for task error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengambil daftar submission.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengambil daftar submission.",
+      error: error.message,
+    });
   }
 };
 
@@ -472,21 +467,17 @@ const getMySubmissionForTask = async (req, res) => {
       },
     });
     if (!submission)
-      return res
-        .status(404)
-        .json({
-          message:
-            "Anda belum mengumpulkan tugas ini atau tugas tidak ditemukan.",
-        });
+      return res.status(404).json({
+        message:
+          "Anda belum mengumpulkan tugas ini atau tugas tidak ditemukan.",
+      });
     res.json(submission);
   } catch (error) {
     console.error("Get my submission error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengambil submission Anda.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengambil submission Anda.",
+      error: error.message,
+    });
   }
 };
 
@@ -542,11 +533,9 @@ const deleteSubmissionFile = async (req, res) => {
     }
 
     if (!submission.fileUrl) {
-      return res
-        .status(400)
-        .json({
-          message: "File untuk submission ini tidak ada atau sudah dihapus.",
-        });
+      return res.status(400).json({
+        message: "File untuk submission ini tidak ada atau sudah dihapus.",
+      });
     }
 
     const fileName = path.basename(submission.fileUrl); // Ambil nama file dari /uploads/filename.ext
@@ -583,22 +572,18 @@ const deleteSubmissionFile = async (req, res) => {
       console.warn(
         `File ${filePath} tidak ditemukan di server saat mencoba menghapus, tetapi URL di DB diupdate.`
       );
-      res
-        .status(200)
-        .json({
-          message:
-            "File tidak ditemukan di server, URL pada database telah diupdate (kemungkinan sudah terhapus sebelumnya).",
-          submission: updatedSubmission,
-        });
+      res.status(200).json({
+        message:
+          "File tidak ditemukan di server, URL pada database telah diupdate (kemungkinan sudah terhapus sebelumnya).",
+        submission: updatedSubmission,
+      });
     }
   } catch (error) {
     console.error("Delete submission file error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal menghapus file submission.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal menghapus file submission.",
+      error: error.message,
+    });
   }
 };
 
