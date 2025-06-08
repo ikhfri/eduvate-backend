@@ -34,17 +34,6 @@ app.use(cors({
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true })); 
 
-const projectRoot = process.cwd();
-const uploadDirFromEnv = process.env.UPLOAD_DIR ; 
-const uploadDirAbsolute = path.join(projectRoot, uploadDirFromEnv.startsWith('./') ? uploadDirFromEnv.substring(2) : uploadDirFromEnv );
-
-
-if (!fs.existsSync(uploadDirAbsolute)){
-    fs.mkdirSync(uploadDirAbsolute, { recursive: true });
-    console.log(`Folder ${uploadDirAbsolute} berhasil dibuat.`);
-}
-
-app.use('/uploads', express.static(uploadDirAbsolute));
 
 
 // Rute
