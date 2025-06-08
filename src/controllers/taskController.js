@@ -14,7 +14,7 @@ const UPLOAD_FOLDER_NAME = "nevtik"; // bucket dan folder di supabase storage
 const projectRoot = process.cwd(); // Root direktori proyek
 // Hilangkan './' jika ada
 
-// --- Helper Functions ---
+// --- Helper Functions --
 const handleNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 const handleOptions = (req, res) => {
