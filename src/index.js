@@ -29,7 +29,7 @@ const quizRoutes = require('./routes/quizRoutes');
 const { authenticateToken } = require('./middleware/authMiddleware'); 
 
 const app = express();
-const PORT = process.env.PORT || 3001; 
+// const PORT = process.env.PORT || 3001; 
 
 // Middleware
 app.use(cors({
@@ -77,10 +77,10 @@ app.use((err, req, res, next) => {
   res.status(500).send({ message: 'Terjadi kesalahan pada server!', error: err.message });
 });
 
-if (require.main === module && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT}`);
-  });
-}
+// if (require.main === module && process.env.NODE_ENV !== 'test') {
+//   app.listen(PORT, () => {
+//     console.log(`Server berjalan di http://localhost:${PORT}`);
+//   });
+// }
 
 module.exports = app;
