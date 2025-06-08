@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "seed": "node seed.js",
+    "vercel-build": "prisma generate",
     "dev": "nodemon src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --skip-generate",
