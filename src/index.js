@@ -1,20 +1,14 @@
 
 const path = require('path'); // PASTIKAN INI DI BARIS PALING ATAS setelah komentar
-const dotenv = require('dotenv'); // Impor dotenv di awal
 
 
 // Muat variabel lingkungan dari file .env HANYA jika bukan environment 'test'
 // Untuk 'test', jest.setup.js akan menangani pemuatan .env.test
-if (process.env.NODE_ENV !== 'test') {
-    const result = dotenv.config({ path: path.join(__dirname, '..', '.env') });
-    if (result.error) {
-        // Ini bukan error fatal, aplikasi mungkin masih berjalan jika var env diatur secara eksternal
-        console.warn(`PERINGATAN: Tidak dapat memuat file .env. Error: ${result.error.message}`);
-    }
+
     // else {
     //    console.log('File .env berhasil dimuat untuk environment dev/production.');
     // }
-}
+
 
 const express = require('express');
 const cors = require('cors');
