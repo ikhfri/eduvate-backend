@@ -24,14 +24,23 @@ const { authenticateToken } = require('./middleware/authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 3001; 
+const allowedOrigins = ["https://nevtik-lms.vercel.app"];
 
-// Middleware
 app.use(
   cors({
-    origin: "https://nevtik-lms.vercel.app/",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
+    credentials: true, // kalau perlu kirim cookie atau auth header
   })
 );
 
