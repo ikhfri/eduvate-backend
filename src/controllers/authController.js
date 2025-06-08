@@ -133,7 +133,61 @@ const handleOptions = (req, res) => {
   res.sendStatus(204);
 };
 
+const changePassword = async (req, res) => {
+  // ID pengguna didapatkan dari token yang sudah diverifikasi oleh middleware
+  const userId = req.user.id;
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res
+      .status(400)
+      .json({ message: "Password saat ini dan password baru wajib diisi." });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ message: "Password baru minimal harus 6 karakter." });
+  }
+
+  try {
+    // Ambil data pengguna dari database, termasuk hash password saat ini
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Pengguna tidak ditemukan." });
+    }
+
+    // Bandingkan password saat ini yang dimasukkan dengan yang ada di database
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Password saat ini salah." });
+    }
+
+    // Hash password baru sebelum disimpan
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password di database
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: "Password berhasil diubah." });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res
+      .status(500)
+      .json({ message: "Gagal mengubah password.", error: error.message });
+  }
+};
+
+
 module.exports = {
+  changePassword,
   register,
   putRegister: handleRegisterNotImplemented,
   deleteRegister: handleRegisterNotImplemented,

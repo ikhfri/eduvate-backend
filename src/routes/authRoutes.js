@@ -1,13 +1,12 @@
 // backend/src/routes/authRoutes.js
 const express = require("express");
 const authController = require("../controllers/authController"); // Path disesuaikan
-const { authorizeRole } = require("../middleware/authMiddleware");
 
 const { authenticateToken } = require("../middleware/authMiddleware"); // Path disesuaikan
 const router = express.Router();
 
 
-
+router.put("/change-password", authenticateToken, authController.changePassword);
 // /api/auth/login
 router.post("/login", authController.login);
 router.put("/login", authController.putLogin);
