@@ -35,7 +35,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); 
 
 const projectRoot = process.cwd();
-const uploadDirFromEnv = process.env.UPLOAD_DIR || 'uploads'; 
+const uploadDirFromEnv = process.env.UPLOAD_DIR ; 
 const uploadDirAbsolute = path.join(projectRoot, uploadDirFromEnv.startsWith('./') ? uploadDirFromEnv.substring(2) : uploadDirFromEnv );
 
 
