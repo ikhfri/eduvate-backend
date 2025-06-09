@@ -1,4 +1,4 @@
-
+// datasource dan generator
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
@@ -7,13 +7,32 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  seed     = "node seed.js"
 }
+
+// Enum untuk peran dan tipe pertanyaan
+enum Role {
+  STUDENT
+  ADMIN
+  MENTOR
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  ESSAY
+}
+
+enum QuizAttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// --- Model-model Utama ---
 
 model SystemSetting {
   id    String @id @default(cuid())
-  key   String @unique // Contoh: "rankingVisibility"
-  value Json   // Contoh: {"isRevealed": true}
+  key   String @unique
+  value Json
 }
 
 model User {
@@ -25,112 +44,113 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tasks       Task[]       @relation("UserTasks")
-  submissions Submission[] @relation("UserSubmissions")
-  quizzes     Quiz[]       @relation("UserQuizzes")
+  // Relasi
+  tasks        Task[]        @relation("UserTasks")
+  submissions  Submission[]  @relation("UserSubmissions")
+  quizzes      Quiz[]        @relation("UserQuizzes")
   quizAttempts QuizAttempt[] @relation("UserQuizAttempts")
 }
 
-enum Role {
-  STUDENT
-  ADMIN
-  MENTOR
-}
-
 model Task {
-  id                  String    @id @default(cuid())
+  id                  String   @id @default(cuid())
   title               String
-  description         String    @db.Text
-  submissionStartDate DateTime  // Tanggal mulai pengumpulan
-  deadline            DateTime  // Tanggal akhir pengumpulan (tetap disebut deadline)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  authorId            String
-  author              User      @relation("UserTasks", fields: [authorId], references: [id])
+  description         String   @db.Text
+  submissionStartDate DateTime
+  deadline            DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  submissions         Submission[]
+  // Relasi
+  authorId String
+  author   User   @relation("UserTasks", fields: [authorId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([authorId])
 }
 
 model Submission {
   id          String   @id @default(cuid())
-  fileUrl     String? // Path ke file di server, atau URL jika menggunakan cloud storage. Dibuat nullable.
+  fileUrl     String?
   grade       Int?
-  comment     String?  @db.Text // Bisa digunakan untuk catatan admin terkait penghapusan file
+  comment     String?  @db.Text
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-
+  // Relasi
   taskId    String
-  task      Task     @relation(fields: [taskId], references: [id])
+  task      Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   studentId String
-  student   User     @relation("UserSubmissions", fields: [studentId], references: [id])
+  student   User   @relation("UserSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([taskId, studentId]) // Siswa hanya bisa submit satu kali per tugas
+  @@unique([taskId, studentId])
+  @@index([taskId])
+  @@index([studentId])
 }
 
 model Quiz {
-  id          String   @id @default(cuid())
-  title       String
-  description String?  @db.Text
-  deadline    DateTime // Anda mungkin ingin menambahkan submissionStartDate juga untuk kuis
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  duration            Int?      // Durasi kuis dalam menit
+  deadline            DateTime
   submissionStartDate DateTime?
-  duration    Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  authorId    String
-  author      User     @relation("UserQuizzes", fields: [authorId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  questions   Question[]
+  // Relasi
+  authorId String
+  author   User   @relation("UserQuizzes", fields: [authorId], references: [id], onDelete: Cascade)
+  questions    Question[]
   quizAttempts QuizAttempt[]
+
+  @@index([authorId])
 }
 
 model Question {
-  id        String   @id @default(cuid())
-  text      String   @db.Text
-  // Pilihan disimpan sebagai JSON string. Contoh:
-  // [{"text": "Pilihan A", "isCorrect": true}, {"text": "Pilihan B", "isCorrect": false}]
-  imageUrl  String? @db.Text  // <-- UBAH BARIS INI  type      String
-  options   Json
-  type      QuestionType // <-- TAMBAHKAN BARIS INI
-  quizId    String
-  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade) // <-- TAMBAHKAN INI
+  id       String       @id @default(cuid())
+  text     String       @db.Text
+  imageUrl String?      @db.Text
+  options  Json         // Pilihan ganda, atau jawaban benar untuk tipe lain
+  type     QuestionType // MULTIPLE_CHOICE, TRUE_FALSE, ESSAY
 
+  // Relasi
+  quizId      String
+  quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizAnswers QuizAnswer[]
-}
 
+  @@index([quizId])
+}
 model QuizAttempt {
-  id          String   @id @default(cuid())
-  score       Int
-  submittedAt DateTime @default(now())
-
-  quizId    String
-  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade) // <-- TAMBAHKAN INI
-  studentId String
-  student   User     @relation("UserQuizAttempts", fields: [studentId], references: [id])
-
-  answers   QuizAnswer[]
-  @@unique([quizId, studentId]) // Siswa hanya bisa mencoba kuis satu kali
+  id                String            @id @default(cuid())
+  score             Float
+  submittedAt       DateTime          @default(now())
+  status            QuizAttemptStatus @default(IN_PROGRESS)
+  progress          Json?             // Menyimpan progres jawaban sementara
+  timeLeftInSeconds Int?
+  violationCount    Int?              @default(0)
+  quizId            String
+  quiz              Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId         String
+  student           User              @relation("UserQuizAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+  answers           QuizAnswer[]
+  @@unique([quizId, studentId])
+  @@index([quizId])
+  @@index([studentId])
 }
 
-
-// Model QuizAnswer yang sudah diperbaiki
 model QuizAnswer {
   id                  String  @id @default(cuid())
-  isCorrect           Boolean // <-- TAMBAHKAN BARIS INI
-  selectedOptionIndex Int?
-  answerText          String? @db.Text
+  isCorrect           Boolean
+  selectedOptionIndex Int?    // Untuk MULTIPLE_CHOICE atau TRUE_FALSE
+  answerText          String? @db.Text // Untuk ESSAY
 
-  attemptId           String
-  attempt             QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-
-  questionId          String
-  question            Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  // Relasi
+  attemptId  String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([attemptId, questionId])
-}
-
-enum QuestionType {
-  MULTIPLE_CHOICE
-  TRUE_FALSE
-  ESSAY
+  @@index([attemptId])
+  @@index([questionId])
 }
