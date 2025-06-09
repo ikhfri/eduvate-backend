@@ -87,4 +87,19 @@ router.patch(
   quizController.saveAttemptProgress
 );
 
+router.get(
+  "/:quizId/submissions",
+  authenticateToken,
+  authorizeRole(["ADMIN", "MENTOR"]),
+  quizController.getAttemptsForQuiz
+);
+
+// [BARU] Route untuk menghapus sebuah attempt
+router.delete(
+  "/attempts/:attemptId",
+  authenticateToken,
+  authorizeRole(["ADMIN", "MENTOR"]),
+  quizController.deleteAttempt
+);
+
 module.exports = router;

@@ -1228,10 +1228,83 @@ const saveAttemptProgress = async (req, res) => {
       .json({ message: "Gagal menyimpan progres.", error: error.message });
   }
 };
+const getAttemptsForQuiz = async (req, res) => {
+  const { quizId } = req.params;
+  try {
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      select: { title: true }, // Ambil judul untuk ditampilkan di frontend
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Kuis tidak ditemukan." });
+    }
+
+    const attempts = await prisma.quizAttempt.findMany({
+      where: { quizId: quizId },
+      include: {
+        student: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      orderBy: {
+        submittedAt: "desc",
+      },
+    });
+
+    res.json({
+      message: "Berhasil mengambil data percobaan kuis.",
+      data: {
+        quizTitle: quiz.title,
+        attempts: attempts,
+      },
+    });
+  } catch (error) {
+    console.error("Get attempts for quiz error:", error);
+    res
+      .status(500)
+      .json({
+        message: "Gagal mengambil data percobaan kuis.",
+        error: error.message,
+      });
+  }
+};
+
+/**
+ * [ADMIN/MENTOR] Menghapus sebuah percobaan kuis (mereset attempt siswa).
+ */
+const deleteAttempt = async (req, res) => {
+  const { attemptId } = req.params;
+  try {
+    // onDelete: Cascade di skema akan menghapus QuizAnswer yang terkait
+    await prisma.quizAttempt.delete({
+      where: { id: attemptId },
+    });
+    res.json({
+      message:
+        "Percobaan kuis berhasil dihapus. Siswa dapat mengerjakan ulang.",
+    });
+  } catch (error) {
+    console.error("Delete attempt error:", error);
+    if (error.code === "P2025") {
+      // Prisma code for record not found
+      return res
+        .status(404)
+        .json({ message: "Percobaan kuis tidak ditemukan." });
+    }
+    res
+      .status(500)
+      .json({
+        message: "Gagal menghapus percobaan kuis.",
+        error: error.message,
+      });
+  }
+};
 
 module.exports = {
   // Admin/Mentor
-
+  getAttemptsForQuiz,
+  deleteAttempt,
   createQuiz,
 
   getAllQuizzesAdmin,
