@@ -26,7 +26,7 @@ const rankingRoutes = require('./routes/rankingRoutes'); // <-- 1. Impor di sini
 
 const app = express();
 const PORT = process.env.PORT || 3001; 
-const allowedOrigins = ["https://nevtik-lms.vercel.app", "http://tkj.nevtik.org"];
+const allowedOrigins = ["https://nevtik-lms.vercel.app", "https://tkj.nevtik.org"];
 
 app.use(
   cors({
