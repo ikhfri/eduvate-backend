@@ -3,12 +3,13 @@ const express = require("express");
 const taskController = require("../controllers/taskController"); // Path disesuaikan
 const { authorizeRole } = require("../middleware/authMiddleware"); // Path disesuaikan
 const upload = require("../middleware/uploadMiddleware"); // Path disesuaikan
+const cacheMiddleware = require("../middleware/cachingMiddleware");
 const router = express.Router();
 
 // --- /api/tasks ---
 router
   .route("/")
-  .get(taskController.getAllTasks)
+  .get(cacheMiddleware(5),taskController.getAllTasks)
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.createTask)
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.putAllTasks)
   .delete(authorizeRole(["ADMIN", "MENTOR"]), taskController.deleteAllTasks)

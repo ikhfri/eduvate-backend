@@ -1,6 +1,7 @@
 // backend/src/routes/quizRoutes.js
 const express = require("express");
 const quizController = require("../controllers/quizController");
+const cacheMiddleware = require("../middleware/cachingMiddleware");
 const {
   authenticateToken,
   authorizeRole,
@@ -51,7 +52,7 @@ router
 // Melihat daftar kuis yang tersedia - /api/quizzes/available
 router.get(
   "/available",
-  authenticateToken,
+  authenticateToken,cacheMiddleware(5),
   quizController.getAvailableQuizzesForStudent
 );
 
