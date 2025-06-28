@@ -1,15 +1,17 @@
-// backend/src/routes/taskRoutes.js
 const express = require("express");
-const taskController = require("../controllers/taskController"); // Path disesuaikan
-const { authorizeRole } = require("../middleware/authMiddleware"); // Path disesuaikan
-const upload = require("../middleware/uploadMiddleware"); // Path disesuaikan
+const taskController = require("../controllers/taskController");
+const { authorizeRole } = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 const cacheMiddleware = require("../middleware/cachingMiddleware");
 const router = express.Router();
 
 // --- /api/tasks ---
 router
   .route("/")
-  .get(cacheMiddleware(5),taskController.getAllTasks)
+  .get(
+    cacheMiddleware(5), // Cache daftar task (global untuk semua user)
+    taskController.getAllTasks
+  )
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.createTask)
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.putAllTasks)
   .delete(authorizeRole(["ADMIN", "MENTOR"]), taskController.deleteAllTasks)
@@ -20,7 +22,10 @@ router
 // --- /api/tasks/:taskId ---
 router
   .route("/:taskId")
-  .get(taskController.getTaskById)
+  .get(
+    cacheMiddleware(2), // Detail task bisa pakai cache pendek
+    taskController.getTaskById
+  )
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.updateTask)
   .delete(authorizeRole(["ADMIN", "MENTOR"]), taskController.deleteTask)
   .patch(authorizeRole(["ADMIN", "MENTOR"]), taskController.patchTask)
@@ -28,7 +33,7 @@ router
   .options(taskController.optionsTaskById)
   .head(taskController.headTaskById);
 
-// --- /api/tasks/:taskId/submit ---
+// --- /api/tasks/:taskId/submit --- (❌ JANGAN cache)
 router
   .route("/:taskId/submit")
   .post(
@@ -54,7 +59,11 @@ router
 // --- /api/tasks/:taskId/submissions ---
 router
   .route("/:taskId/submissions")
-  .get(authorizeRole(["ADMIN", "MENTOR"]), taskController.getSubmissionsForTask)
+  .get(
+    authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(1), // Cache sangat pendek, karena bisa ada penilaian
+    taskController.getSubmissionsForTask
+  )
   .post(
     authorizeRole(["ADMIN", "MENTOR"]),
     taskController.postSubmissionsForTask
@@ -71,7 +80,7 @@ router
   .options(taskController.optionsSubmissionsForTask)
   .head(taskController.headSubmissionsForTask);
 
-// --- /api/tasks/:taskId/my-submission ---
+// --- /api/tasks/:taskId/my-submission --- (❌ personal user, no cache)
 router
   .route("/:taskId/my-submission")
   .get(authorizeRole(["STUDENT"]), taskController.getMySubmissionForTask)
@@ -86,7 +95,11 @@ router
 router
   .route("/submissions/:submissionId/grade")
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.gradeSubmission)
-  .get(authorizeRole(["ADMIN", "MENTOR"]), taskController.getGradeInfo)
+  .get(
+    authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(1), // Bisa di-cache pendek untuk grade info
+    taskController.getGradeInfo
+  )
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.postGrade)
   .delete(authorizeRole(["ADMIN", "MENTOR"]), taskController.deleteGrade)
   .patch(
@@ -99,11 +112,15 @@ router
 // --- /api/tasks/submissions/:submissionId/file ---
 router
   .route("/submissions/:submissionId/file")
+  .get(
+    authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(2), // File bisa di-cache sebentar
+    taskController.getSubmissionFile
+  )
   .delete(
     authorizeRole(["ADMIN", "MENTOR"]),
     taskController.deleteSubmissionFile
   )
-  .get(authorizeRole(["ADMIN", "MENTOR"]), taskController.getSubmissionFile)
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.postSubmissionFile)
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.putSubmissionFile)
   .patch(authorizeRole(["ADMIN", "MENTOR"]), taskController.patchSubmissionFile)
