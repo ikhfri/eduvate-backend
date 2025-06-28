@@ -1,11 +1,12 @@
 // backend/src/routes/quizRoutes.js
 const express = require("express");
 const quizController = require("../controllers/quizController");
-const cacheMiddleware = require("../middleware/cachingMiddleware");
+const cacheMiddleware = require("../middleware/cachingMiddleware"); // sudah dalam satuan menit
 const {
   authenticateToken,
   authorizeRole,
 } = require("../middleware/authMiddleware");
+
 const router = express.Router();
 
 // === ADMIN & MENTOR ROUTES ===
@@ -14,12 +15,20 @@ const router = express.Router();
 router
   .route("/")
   .post(authorizeRole(["ADMIN", "MENTOR"]), quizController.createQuiz)
-  .get(authorizeRole(["ADMIN", "MENTOR"]), quizController.getAllQuizzesAdmin);
+  .get(
+    authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(5), // 5 menit
+    quizController.getAllQuizzesAdmin
+  );
 
 // Satu Kuis Spesifik - /api/quizzes/:quizId
 router
   .route("/:quizId")
-  .get(authorizeRole(["ADMIN", "MENTOR"]), quizController.getQuizByIdAdmin)
+  .get(
+    authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(1), // 1 menit
+    quizController.getQuizByIdAdmin
+  )
   .put(authorizeRole(["ADMIN", "MENTOR"]), quizController.updateQuiz)
   .patch(authorizeRole(["ADMIN", "MENTOR"]), quizController.patchQuiz)
   .delete(authorizeRole(["ADMIN", "MENTOR"]), quizController.deleteQuiz);
@@ -30,6 +39,7 @@ router
   .post(authorizeRole(["ADMIN", "MENTOR"]), quizController.addQuestionToQuiz)
   .get(
     authorizeRole(["ADMIN", "MENTOR"]),
+    cacheMiddleware(2), // 2 menit
     quizController.getQuestionsForQuizAdmin
   );
 
@@ -40,19 +50,19 @@ router
   .delete(authorizeRole(["ADMIN", "MENTOR"]), quizController.deleteQuestion);
 
 // Hasil dan Ranking Kuis - /api/quizzes/:quizId/results
-router
-  .route("/:quizId/results")
-  .get(
-    authorizeRole(["ADMIN", "MENTOR"]),
-    quizController.getQuizResultsAndRanking
-  );
+router.route("/:quizId/results").get(
+  authorizeRole(["ADMIN", "MENTOR"]),
+  cacheMiddleware(0.5), // 30 detik = 0.5 menit
+  quizController.getQuizResultsAndRanking
+);
 
 // === STUDENT ROUTES ===
 
 // Melihat daftar kuis yang tersedia - /api/quizzes/available
 router.get(
   "/available",
-  authenticateToken,cacheMiddleware(5),
+  authenticateToken,
+  cacheMiddleware(5), // 5 menit
   quizController.getAvailableQuizzesForStudent
 );
 
@@ -62,7 +72,7 @@ router.get(
   authenticateToken,
   authorizeRole(["STUDENT"]),
   quizController.startOrResumeAttempt
-); // Menggunakan controller baru
+); // ❌ Jangan pakai cache
 
 // Mengirimkan jawaban kuis - /api/quizzes/:quizId/attempt
 router.post(
@@ -80,22 +90,23 @@ router.get(
   quizController.getMyQuizAttemptResult
 );
 
-// [BARU] Menyimpan progres pengerjaan kuis - /api/quizzes/attempts/:attemptId/progress
-// Metode PATCH cocok untuk update parsial seperti menyimpan progres.
+// Menyimpan progres pengerjaan kuis
 router.patch(
   "/attempts/:attemptId/save-progress",
-  authenticateToken, // Hanya perlu login, controller akan verifikasi kepemilikan attempt
+  authenticateToken,
   quizController.saveAttemptProgress
 );
 
+// Lihat semua attempt untuk kuis (admin)
 router.get(
   "/:quizId/submissions",
   authenticateToken,
   authorizeRole(["ADMIN", "MENTOR"]),
+  cacheMiddleware(0.5), // 30 detik
   quizController.getAttemptsForQuiz
 );
 
-// [BARU] Route untuk menghapus sebuah attempt
+// Hapus attempt
 router.delete(
   "/attempts/:attemptId",
   authenticateToken,
