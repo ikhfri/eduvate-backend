@@ -12,3 +12,4 @@ router.post(
   authenticateToken,
   authController.register
 );
+
