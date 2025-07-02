@@ -37,16 +37,19 @@ router
 router
   .route("/:taskId/submit")
   .post(
+    authorizeRole(["STUDENT"]),
     upload.single("submissionFile"),
     taskController.submitTask
   )
   .get(authorizeRole(["STUDENT"]), taskController.getSubmitTaskInfo)
   .put(
+    authorizeRole(["STUDENT"]),
     upload.single("submissionFile"),
     taskController.putSubmitTask
   )
   .delete(authorizeRole(["STUDENT"]), taskController.deleteSubmitTask)
   .patch(
+    authorizeRole(["STUDENT"]),
     upload.single("submissionFile"),
     taskController.patchSubmitTask
   )
