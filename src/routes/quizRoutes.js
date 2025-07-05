@@ -17,7 +17,6 @@ router
   .post(authorizeRole(["ADMIN", "MENTOR"]), quizController.createQuiz)
   .get(
     authorizeRole(["ADMIN", "MENTOR"]),
-    cacheMiddleware(5), // 5 menit
     quizController.getAllQuizzesAdmin
   );
 
@@ -39,7 +38,6 @@ router
   .post(authorizeRole(["ADMIN", "MENTOR"]), quizController.addQuestionToQuiz)
   .get(
     authorizeRole(["ADMIN", "MENTOR"]),
-    cacheMiddleware(2), // 2 menit
     quizController.getQuestionsForQuizAdmin
   );
 
@@ -52,7 +50,6 @@ router
 // Hasil dan Ranking Kuis - /api/quizzes/:quizId/results
 router.route("/:quizId/results").get(
   authorizeRole(["ADMIN", "MENTOR"]),
-  cacheMiddleware(0.5), // 30 detik = 0.5 menit
   quizController.getQuizResultsAndRanking
 );
 
@@ -102,7 +99,6 @@ router.get(
   "/:quizId/submissions",
   authenticateToken,
   authorizeRole(["ADMIN", "MENTOR"]),
-  cacheMiddleware(0.5), // 30 detik
   quizController.getAttemptsForQuiz
 );
 

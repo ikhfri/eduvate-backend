@@ -61,7 +61,6 @@ router
   .route("/:taskId/submissions")
   .get(
     authorizeRole(["ADMIN", "MENTOR"]),
-    cacheMiddleware(1), // Cache sangat pendek, karena bisa ada penilaian
     taskController.getSubmissionsForTask
   )
   .post(
@@ -97,7 +96,6 @@ router
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.gradeSubmission)
   .get(
     authorizeRole(["ADMIN", "MENTOR"]),
-    cacheMiddleware(1), // Bisa di-cache pendek untuk grade info
     taskController.getGradeInfo
   )
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.postGrade)
@@ -113,7 +111,7 @@ router
 router
   .route("/submissions/:submissionId/file")
   .get(
-    authorizeRole(["ADMIN", "MENTOR"]),
+    authorizeRole(["ADMIN", "MENTOR", "STUDENT"]),
     cacheMiddleware(2), // File bisa di-cache sebentar
     taskController.getSubmissionFile
   )
