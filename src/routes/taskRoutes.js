@@ -9,7 +9,7 @@ const router = express.Router();
 router
   .route("/")
   .get(
-    cacheMiddleware(5), // Cache daftar task (global untuk semua user)
+    cacheMiddleware(1), // Cache daftar task (global untuk semua user)
     taskController.getAllTasks
   )
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.createTask)
@@ -23,7 +23,6 @@ router
 router
   .route("/:taskId")
   .get(
-    cacheMiddleware(2), // Detail task bisa pakai cache pendek
     taskController.getTaskById
   )
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.updateTask)
