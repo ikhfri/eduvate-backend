@@ -1,5 +1,5 @@
 const prisma = require("../prismaClient");
-
+const xlsx = require("xlsx");
 // --- Helper Functions ---
 
 const handleNotImplemented = (req, res) =>
@@ -617,118 +617,143 @@ const getAvailableQuizzesForStudent = async (req, res) => {
 // Perbaikan untuk getQuizForStudentToTake di backend/src/controllers/quizController.js
 
 const getQuizForStudentToTake = async (req, res) => {
-  // GET
-
   const { quizId } = req.params;
-
   const studentId = req.user.id;
-
   const now = new Date();
 
   try {
-    // Cek apakah siswa sudah pernah mengerjakan kuis ini
-
-    const existingAttempt = await prisma.quizAttempt.findUnique({
-      where: { quizId_studentId: { quizId, studentId } },
+    // Langkah 1: Cek apakah siswa sudah MENYELESAIKAN kuis ini.
+    const completedAttempt = await prisma.quizAttempt.findFirst({
+      where: { quizId, studentId, status: "COMPLETED" },
     });
-
-    if (existingAttempt) {
+    if (completedAttempt) {
       return res
         .status(403)
         .json({
-          message: "Anda sudah pernah mengerjakan kuis ini.",
-          attemptId: existingAttempt.id,
+          message: "Anda sudah pernah menyelesaikan kuis ini.",
+          attemptId: completedAttempt.id,
         });
     }
 
+    // Langkah 2: Ambil data kuis dan semua soalnya.
     const quizFromDb = await prisma.quiz.findUnique({
       where: { id: quizId },
-
       include: {
         questions: {
-          // orderBy: { id: 'asc' }, // Opsional, bisa diaktifkan jika perlu urutan
-
           select: {
-            // Hanya pilih field yang dibutuhkan siswa
-
             id: true,
-
             text: true,
-
-            type: true, // <-- FIX 1: Tambahkan 'type'
+            type: true,
             imageUrl: true,
-
-            options: true, // Siswa perlu melihat pilihan
+            options: true,
           },
         },
-
-        author: { select: { name: true } },
       },
     });
 
     if (!quizFromDb) {
       return res.status(404).json({ message: "Kuis tidak ditemukan." });
-    } // Cek apakah kuis aktif
+    }
 
+    // Langkah 3: Pastikan kuis sedang dalam periode aktif.
     const isQuizActive =
       (quizFromDb.submissionStartDate
         ? now >= quizFromDb.submissionStartDate
         : true) && now <= quizFromDb.deadline;
-
     if (!isQuizActive) {
       return res
         .status(403)
         .json({
           message: "Kuis ini tidak aktif atau sudah melewati batas waktu.",
         });
-    } // FIX 2: Modifikasi options dengan aman dan hapus 'isCorrect'
+    }
 
-    const questionsForStudent = quizFromDb.questions.map((q) => {
-      let optionsForStudent = []; // Default ke array kosong // Hanya proses 'options' jika ada dan merupakan array
+    // Langkah 4: Cari sesi pengerjaan (attempt) yang sedang berlangsung.
+    let attempt = await prisma.quizAttempt.findFirst({
+      where: { quizId, studentId, status: "IN_PROGRESS" },
+    });
 
-      if (Array.isArray(q.options)) {
-        // Hapus informasi 'isCorrect' dari setiap pilihan sebelum dikirim
+    let questionOrder= [];
 
-        optionsForStudent = q.options.map((opt) => ({ text: opt.text }));
+    if (attempt) {
+      // KASUS A: Siswa melanjutkan kuis. Ambil urutan soal yang sudah disimpan.
+      console.log(`Melanjutkan sesi kuis ${attempt.id}. Memuat urutan soal...`);
+      // Fallback ke urutan default jika 'questionOrder' tidak ditemukan di progres
+      questionOrder =
+        attempt.progress?.questionOrder ||
+        quizFromDb.questions.map((q) => q.id);
+    } else {
+      // KASUS B: Siswa memulai kuis baru. Acak soal dan buat attempt baru.
+      console.log(`Memulai sesi kuis baru untuk kuis ${quizId}.`);
+
+      // --- Logika Pengacakan Soal (Fisher-Yates Shuffle) ---
+      let questionsToShuffle = [...quizFromDb.questions];
+      for (let i = questionsToShuffle.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questionsToShuffle[i], questionsToShuffle[j]] = [
+          questionsToShuffle[j],
+          questionsToShuffle[i],
+        ];
       }
+      questionOrder = questionsToShuffle.map((q) => q.id);
+      console.log(`Urutan soal baru yang diacak:`, questionOrder);
 
+      // Buat dan simpan attempt baru beserta urutan soalnya.
+      attempt = await prisma.quizAttempt.create({
+        data: {
+          quizId,
+          studentId,
+          status: "IN_PROGRESS",
+          score: 0,
+          timeLeftInSeconds: quizFromDb.duration
+            ? quizFromDb.duration * 60
+            : null,
+          progress: {
+            answers: {},
+            questionOrder: questionOrder, // <-- SIMPAN URUTAN SOAL DI SINI
+          },
+        },
+      });
+    }
+
+    // Langkah 5: Susun soal sesuai urutan yang benar (baik yang baru diacak maupun yang dilanjutkan).
+    const sortedQuestions = questionOrder
+      .map((id) => quizFromDb.questions.find((q) => q.id === id))
+      .filter(Boolean); // .filter(Boolean) untuk menghapus soal yang mungkin telah dihapus
+
+    // Langkah 6: Hapus kunci jawaban dari soal sebelum dikirim ke frontend.
+    const questionsForStudent = sortedQuestions.map((q) => {
+      const optionsForStudent = Array.isArray(q.options)
+        ? q.options.map((opt) => ({ text: opt.text }))
+        : [];
       return {
         id: q.id,
-
         text: q.text,
-
-        imageUrl: q.imageUrl,
-
         type: q.type,
-
-        duration: quizFromDb.duration, // <-- SERTAKAN DURATION DI SINI
-
+        imageUrl: q.imageUrl,
         options: optionsForStudent,
       };
-    }); // Buat objek respons akhir dengan pertanyaan yang sudah diproses
+    });
 
+    // Langkah 7: Siapkan data final untuk dikirim ke frontend.
     const quizForStudent = {
       id: quizFromDb.id,
-
       title: quizFromDb.title,
-
       description: quizFromDb.description,
-
       duration: quizFromDb.duration,
-
       questions: questionsForStudent,
+      attempt: attempt,
     };
 
-    res.json(quizForStudent);
+    res.json({
+      message: "Berhasil mengambil detail kuis",
+      data: quizForStudent,
+    });
   } catch (error) {
     console.error("Get quiz for student to take error:", error);
-
     res
       .status(500)
-      .json({
-        message: "Gagal mengambil detail kuis untuk dikerjakan.",
-        error: error.message,
-      });
+      .json({ message: "Gagal mengambil detail kuis.", error: error.message });
   }
 };
 
@@ -1301,6 +1326,113 @@ const deleteAttempt = async (req, res) => {
   }
 };
 
+const exportQuizResults = async (req, res) => {
+  const { quizId } = req.params;
+  try {
+    // 1. Ambil judul kuis dan semua pertanyaannya dengan urutan yang konsisten
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        questions: {
+          orderBy: { id: "asc" }, // Urutan soal yang konsisten penting untuk kolom
+        },
+      },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Kuis tidak ditemukan." });
+    }
+
+    // 2. Ambil semua percobaan (attempts) untuk kuis ini, termasuk data siswa dan jawaban mereka
+    const attempts = await prisma.quizAttempt.findMany({
+      where: { quizId },
+      include: {
+        student: { select: { name: true, email: true } },
+        answers: {
+          orderBy: { question: { id: "asc" } }, // Urutkan jawaban agar cocok dengan urutan soal
+        },
+      },
+    });
+
+    // 3. Ubah data menjadi format yang ramah untuk Excel
+    const dataForExcel = attempts.map((attempt) => {
+      const rowData = {
+        "Nama Siswa": attempt.student.name || "N/A",
+        Email: attempt.student.email,
+        Skor: attempt.score,
+        "Waktu Pengumpulan": new Date(attempt.submittedAt).toLocaleString(
+          "id-ID"
+        ),
+      };
+
+      // Buat kolom untuk setiap jawaban pertanyaan
+      quiz.questions.forEach((question, index) => {
+        const questionHeader = `Soal ${index + 1}: ${question.text.substring(
+          0,
+          40
+        )}...`;
+        const studentAnswer = attempt.answers.find(
+          (ans) => ans.questionId === question.id
+        );
+
+        let answerText = "Tidak Dijawab";
+        if (studentAnswer) {
+          if (question.type === "ESSAY") {
+            answerText = studentAnswer.answerText || "";
+          } else if (
+            studentAnswer.selectedOptionIndex !== null &&
+            studentAnswer.selectedOptionIndex !== undefined
+          ) {
+            const options = question.options; // 'options' adalah JSON di Prisma
+            if (
+              Array.isArray(options) &&
+              options[studentAnswer.selectedOptionIndex]
+            ) {
+              answerText = options[studentAnswer.selectedOptionIndex].text;
+            }
+          }
+        }
+        rowData[questionHeader] = answerText;
+      });
+
+      return rowData;
+    });
+
+    // 4. Buat file Excel menggunakan xlsx
+    const worksheet = xlsx.utils.json_to_sheet(dataForExcel);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, "Hasil Kuis");
+
+    // Atur lebar kolom secara otomatis (opsional tapi sangat direkomendasikan)
+    if (dataForExcel.length > 0) {
+      const colWidths = Object.keys(dataForExcel[0]).map((key) => ({
+        wch:
+          Math.max(
+            key.length,
+            ...dataForExcel.map((row) => (row[key] || "").toString().length)
+          ) + 2,
+      }));
+      worksheet["!cols"] = colWidths;
+    }
+
+    // 5. Kirim file Excel sebagai respons ke client
+    const buffer = xlsx.write(workbook, { bookType: "xlsx", type: "buffer" });
+    const filename = `hasil-kuis-${quiz.title.replace(/\s+/g, "-")}.xlsx`;
+
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.send(buffer);
+  } catch (error) {
+    console.error("Export quiz results error:", error);
+    res
+      .status(500)
+      .json({ message: "Gagal mengekspor hasil kuis.", error: error.message });
+  }
+};
+
 module.exports = {
   // Admin/Mentor
   getAttemptsForQuiz,
@@ -1342,6 +1474,7 @@ module.exports = {
   handleOptions,
 
   startOrResumeAttempt,
+  exportQuizResults,
 
   saveAttemptProgress,
 };

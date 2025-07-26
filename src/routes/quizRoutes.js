@@ -111,3 +111,10 @@ router.delete(
 );
 
 module.exports = router;
+
+router.get(
+  "/:quizId/export",
+  authenticateToken,
+  authorizeRole(["ADMIN", "MENTOR"]),
+  quizController.exportQuizResults
+);

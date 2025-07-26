@@ -49,6 +49,8 @@ model User {
   submissions  Submission[]  @relation("UserSubmissions")
   quizzes      Quiz[]        @relation("UserQuizzes")
   quizAttempts QuizAttempt[] @relation("UserQuizAttempts")
+    materials Material[] @relation("UserMaterials")
+
 }
 
 model Task {
@@ -153,4 +155,18 @@ model QuizAnswer {
   @@unique([attemptId, questionId])
   @@index([attemptId])
   @@index([questionId])
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  driveUrl    String   // URL Google Drive untuk materi
+  authorId    String
+    thumbnailUrl String?  // <-- DITAMBAHKAN: URL untuk gambar thumbnail (opsional)
+
+  author      User     @relation("UserMaterials", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([authorId])
 }

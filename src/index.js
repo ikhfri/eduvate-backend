@@ -22,6 +22,7 @@ const userRoutes = require('./routes/userRoutes'); // <-- TAMBAHKAN BARIS INI
 const quizRoutes = require('./routes/quizRoutes'); 
 const { authenticateToken } = require('./middleware/authMiddleware'); 
 const rankingRoutes = require('./routes/rankingRoutes'); // <-- 1. Impor di sini
+const materialRoutes = require("./routes/materialRoutes");
 
 
 const app = express();
@@ -63,6 +64,8 @@ app.use('/api/quizzes', authenticateToken, quizRoutes);
 app.use('/api/questions', authenticateToken, questionsController);  
 app.use("/api/stats",authenticateToken, statsRoutes);
 app.use("/api/rankings", rankingRoutes);
+app.use("/api/materials", materialRoutes);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Global error handler:", err); 
