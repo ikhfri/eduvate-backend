@@ -23,11 +23,10 @@ const quizRoutes = require('./routes/quizRoutes');
 const { authenticateToken } = require('./middleware/authMiddleware'); 
 const rankingRoutes = require('./routes/rankingRoutes'); // <-- 1. Impor di sini
 const materialRoutes = require("./routes/materialRoutes");
-
-
+const attendanceRoutes = require("./routes/attendanceRoutes")
 const app = express();
 const PORT = process.env.PORT || 3001; 
-const allowedOrigins = ["https://lms.nevtik.org", "https://tkj.nevtik.org"];
+const allowedOrigins = ["https://lms.nevtik.org", "https://tkj.nevtik.org", "http://localhost:3000"]; // <-- 2. Tambahkan origin yang diizinkan
 
 app.use(
   cors({
@@ -65,6 +64,7 @@ app.use('/api/questions', authenticateToken, questionsController);
 app.use("/api/stats",authenticateToken, statsRoutes);
 app.use("/api/rankings", rankingRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/attendance", attendanceRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

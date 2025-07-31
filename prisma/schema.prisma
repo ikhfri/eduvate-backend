@@ -16,6 +16,12 @@ enum Role {
   MENTOR
 }
 
+enum AttendanceStatus {
+  HADIR 
+  IZIN  
+  ALFA  
+}
+
 enum QuestionType {
   MULTIPLE_CHOICE
   TRUE_FALSE
@@ -50,6 +56,8 @@ model User {
   quizzes      Quiz[]        @relation("UserQuizzes")
   quizAttempts QuizAttempt[] @relation("UserQuizAttempts")
     materials Material[] @relation("UserMaterials")
+    attendances      Attendance[] @relation("UserAttendances")
+  markedAttendances Attendance[] @relation("MarkedAttendances")
 
 }
 
@@ -169,4 +177,26 @@ model Material {
   createdAt   DateTime @default(now())
 
   @@index([authorId])
+}
+
+model Attendance {
+  id        String           @id @default(cuid())
+  date      DateTime         @db.Date // Hanya menyimpan tanggal, tanpa waktu
+  status    AttendanceStatus
+  notes     String?          @db.Text // Catatan dari siswa jika izin
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relasi ke siswa yang melakukan absensi
+  studentId String
+  student   User             @relation("UserAttendances", fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Relasi ke admin/mentor yang menandai (opsional)
+  markedById String?
+  markedBy   User?            @relation("MarkedAttendances", fields: [markedById], references: [id], onDelete: SetNull)
+
+  // Siswa hanya bisa memiliki satu status absensi per hari
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([markedById])
 }

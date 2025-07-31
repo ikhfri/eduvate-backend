@@ -2,6 +2,9 @@
 CREATE TYPE "Role" AS ENUM ('STUDENT', 'ADMIN', 'MENTOR');
 
 -- CreateEnum
+CREATE TYPE "AttendanceStatus" AS ENUM ('HADIR', 'IZIN', 'ALFA');
+
+-- CreateEnum
 CREATE TYPE "QuestionType" AS ENUM ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY');
 
 -- CreateEnum
@@ -111,6 +114,33 @@ CREATE TABLE "QuizAnswer" (
     CONSTRAINT "QuizAnswer_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Material" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "driveUrl" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "thumbnailUrl" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Material_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Attendance" (
+    "id" TEXT NOT NULL,
+    "date" DATE NOT NULL,
+    "status" "AttendanceStatus" NOT NULL,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "markedById" TEXT,
+
+    CONSTRAINT "Attendance_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "SystemSetting_key_key" ON "SystemSetting"("key");
 
@@ -153,6 +183,18 @@ CREATE INDEX "QuizAnswer_questionId_idx" ON "QuizAnswer"("questionId");
 -- CreateIndex
 CREATE UNIQUE INDEX "QuizAnswer_attemptId_questionId_key" ON "QuizAnswer"("attemptId", "questionId");
 
+-- CreateIndex
+CREATE INDEX "Material_authorId_idx" ON "Material"("authorId");
+
+-- CreateIndex
+CREATE INDEX "Attendance_studentId_idx" ON "Attendance"("studentId");
+
+-- CreateIndex
+CREATE INDEX "Attendance_markedById_idx" ON "Attendance"("markedById");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Attendance_studentId_date_key" ON "Attendance"("studentId", "date");
+
 -- AddForeignKey
 ALTER TABLE "Task" ADD CONSTRAINT "Task_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -179,3 +221,12 @@ ALTER TABLE "QuizAnswer" ADD CONSTRAINT "QuizAnswer_attemptId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "QuizAnswer" ADD CONSTRAINT "QuizAnswer_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Material" ADD CONSTRAINT "Material_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_markedById_fkey" FOREIGN KEY ("markedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
