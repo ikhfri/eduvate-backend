@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend untuk Learning Management System",
   "main": "src/index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
     "seed": "node seed.js",
@@ -26,6 +27,7 @@
     "@prisma/client": "^5.10.2",
     "@supabase/supabase-js": "^2.50.0",
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",

@@ -1,17 +1,25 @@
 const jwt = require("jsonwebtoken");
-const prisma = require("../prismaClient"); // Path disesuaikan karena prismaClient.js sekarang sibling
+const prisma = require("../prismaClient");
 
 const authenticateToken = (req, res, next) => {
   if (req.method === "OPTIONS") {
     return next();
   }
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null)
+  // Ambil token dari Authorization atau Cookie
+  let token = null;
+  const authHeader = req.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
     return res
       .status(401)
       .json({ message: "Unauthorized: Token tidak ditemukan." });
+  }
 
   jwt.verify(token, process.env.JWT_SECRET, async (err, userData) => {
     if (err) {
@@ -43,10 +51,8 @@ const authenticateToken = (req, res, next) => {
 
 const authorizeRole = (rolesAllowed) => {
   return (req, res, next) => {
-    if (req.method === "OPTIONS") {
-      return next();
-    }
-    // Log untuk debugging
+    if (req.method === "OPTIONS") return next();
+
     console.log("AuthorizeRole - req.user:", req.user);
     console.log("AuthorizeRole - rolesAllowed:", rolesAllowed);
     console.log(

@@ -59,7 +59,7 @@ router.post(
   "/qr-check-in", // Endpoint baru kita
   authenticateToken,
   authorizeRole(["ADMIN", "MENTOR"]),
-  attendanceController.checkInByQR
+  attendanceController.checkInWithQR
 );
 
 module.exports = router;

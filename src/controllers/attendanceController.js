@@ -301,48 +301,52 @@ const getDailyRecap = async (req, res) => {
   }
 };
 
-const checkInByQR = async (req, res) => {
+const checkInWithQR = async (req, res) => {
   const { studentId } = req.body;
-  const markedById = req.user.id; // ID admin/mentor yang melakukan scan
+  const markedById = req.user.id; // ID Admin/Mentor yang melakukan scan
   const today = startOfDay(new Date());
 
   if (!studentId) {
-    return res.status(400).json({ message: "Student ID tidak ditemukan." });
+    return res.status(400).json({ message: "ID Siswa tidak valid." });
   }
 
   try {
-    // Upsert: Buat jika belum ada, update jika sudah ada. Mencegah error jika scan 2x.
-    const attendanceRecord = await prisma.attendance.upsert({
+    // 1. Verifikasi apakah siswa ada
+    const student = await prisma.user.findUnique({
+      where: { id: studentId, role: "STUDENT" },
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: "Siswa tidak ditemukan." });
+    }
+
+    // 2. Cek apakah siswa sudah absen hari ini
+    const existingAttendance = await prisma.attendance.findUnique({
       where: { studentId_date: { studentId, date: today } },
-      update: {
-        status: "HADIR",
-        markedById,
-        notes: "Absen via QR Code",
-      },
-      create: {
+    });
+
+    if (existingAttendance) {
+      return res
+        .status(409)
+        .json({ message: `Sudah Absen: ${student.name || student.email}` });
+    }
+
+    // 3. Buat catatan kehadiran baru
+    await prisma.attendance.create({
+      data: {
         studentId,
         date: today,
         status: "HADIR",
         markedById,
-        notes: "Absen via QR Code",
-      },
-      include: {
-        // Ambil nama siswa untuk ditampilkan di frontend admin
-        student: {
-          select: {
-            name: true,
-          },
-        },
       },
     });
 
-    res.json({
-      message: `Kehadiran untuk ${attendanceRecord.student.name} berhasil dicatat.`,
-      data: attendanceRecord,
-    });
+    res
+      .status(201)
+      .json({ message: `Absen Berhasil: ${student.name || student.email}` });
   } catch (error) {
-    console.error("QR CHECK-IN ERROR:", error);
-    res.status(500).json({ message: "Gagal mencatat kehadiran via QR." });
+    console.error("QR Check-in error:", error);
+    res.status(500).json({ message: "Terjadi kesalahan pada server." });
   }
 };
 
@@ -354,5 +358,5 @@ module.exports = {
   getDailyRecap, // <-- Tambahkan fungsi baru ini
   exportWeeklyRecap, // <-- Tambahkan
   exportStudentHistory, // <-- Tambahkan
-  checkInByQR,
+  checkInWithQR, // <-- Tambahkan fungsi baru ini
 };
