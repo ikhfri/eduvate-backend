@@ -301,6 +301,51 @@ const getDailyRecap = async (req, res) => {
   }
 };
 
+const checkInByQR = async (req, res) => {
+  const { studentId } = req.body;
+  const markedById = req.user.id; // ID admin/mentor yang melakukan scan
+  const today = startOfDay(new Date());
+
+  if (!studentId) {
+    return res.status(400).json({ message: "Student ID tidak ditemukan." });
+  }
+
+  try {
+    // Upsert: Buat jika belum ada, update jika sudah ada. Mencegah error jika scan 2x.
+    const attendanceRecord = await prisma.attendance.upsert({
+      where: { studentId_date: { studentId, date: today } },
+      update: {
+        status: "HADIR",
+        markedById,
+        notes: "Absen via QR Code",
+      },
+      create: {
+        studentId,
+        date: today,
+        status: "HADIR",
+        markedById,
+        notes: "Absen via QR Code",
+      },
+      include: {
+        // Ambil nama siswa untuk ditampilkan di frontend admin
+        student: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      message: `Kehadiran untuk ${attendanceRecord.student.name} berhasil dicatat.`,
+      data: attendanceRecord,
+    });
+  } catch (error) {
+    console.error("QR CHECK-IN ERROR:", error);
+    res.status(500).json({ message: "Gagal mencatat kehadiran via QR." });
+  }
+};
+
 module.exports = {
   requestLeave,
   markAttendance,
@@ -309,4 +354,5 @@ module.exports = {
   getDailyRecap, // <-- Tambahkan fungsi baru ini
   exportWeeklyRecap, // <-- Tambahkan
   exportStudentHistory, // <-- Tambahkan
+  checkInByQR,
 };

@@ -55,4 +55,11 @@ router.get(
   attendanceController.getDailyRecap
 );
 
+router.post(
+  "/qr-check-in", // Endpoint baru kita
+  authenticateToken,
+  authorizeRole(["ADMIN", "MENTOR"]),
+  attendanceController.checkInByQR
+);
+
 module.exports = router;

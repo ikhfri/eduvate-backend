@@ -26,6 +26,7 @@ enum QuestionType {
   MULTIPLE_CHOICE
   TRUE_FALSE
   ESSAY
+  MULTIPLE_RESPONSE
 }
 
 enum QuizAttemptStatus {
@@ -122,6 +123,7 @@ model Question {
   imageUrl String?      @db.Text
   options  Json         // Pilihan ganda, atau jawaban benar untuk tipe lain
   type     QuestionType // MULTIPLE_CHOICE, TRUE_FALSE, ESSAY
+  correctAnswerKeywords String?  // Field for essay question keywords
 
   // Relasi
   quizId      String
