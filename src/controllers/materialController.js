@@ -53,6 +53,30 @@ const getAllMaterials = async (req, res) => {
   }
 };
 
+const updateMaterial = async (req, res) => {
+  const { materialId } = req.params;
+  const { title, description, driveUrl, thumbnailUrl } = req.body;
+
+  try {
+    const updatedMaterial = await prisma.material.update({
+      where: { id: materialId },
+      data: {
+        title,
+        description,
+        driveUrl,
+        thumbnailUrl,
+      },
+    });
+    res.json({ message: "Materi berhasil diperbarui.", data: updatedMaterial });
+  } catch (error) {
+    console.error("Update material error:", error);
+    if (error.code === "P2025") {
+      return res.status(404).json({ message: "Materi tidak ditemukan." });
+    }
+    res.status(500).json({ message: "Gagal memperbarui materi." });
+  }
+};
+
 /**
  * [ADMIN/MENTOR] Menghapus materi.
  */
@@ -76,4 +100,5 @@ module.exports = {
   createMaterial,
   getAllMaterials,
   deleteMaterial,
+  updateMaterial,
 };

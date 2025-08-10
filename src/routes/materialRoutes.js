@@ -28,4 +28,11 @@ router.delete(
   materialController.deleteMaterial
 );
 
+router.put(
+  "/:materialId",
+  authenticateToken,
+  authorizeRole(["ADMIN", "MENTOR"]),
+  materialController.updateMaterial
+);
+
 module.exports = router;
