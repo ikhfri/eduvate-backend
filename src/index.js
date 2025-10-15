@@ -17,7 +17,10 @@ const materialRoutes = require("./routes/materialRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes")
 const app = express();
 const PORT = process.env.PORT || 3001; 
-const allowedOrigins = ["https://lms.nevtik.org", "https://tkj.nevtik.org", "http://localhost:3000"]; 
+const allowedOrigins = [
+  "https://eduvate-frontend.vercel.app",
+  "http://localhost:3000",
+]; 
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
