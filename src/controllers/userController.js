@@ -1,13 +1,8 @@
-// D:\backend_lms\src\controllers\userController.js
 
 const prisma = require("../prismaClient");
 
-/**
- * Memperbarui profil pengguna yang sedang login (nama).
- * Email tidak diizinkan untuk diubah di sini.
- */
+
 const updateUserProfile = async (req, res) => {
-  // ID pengguna diambil dari token yang sudah diverifikasi oleh middleware
   const userId = req.user.id;
   const { name } = req.body;
 
@@ -22,7 +17,6 @@ const updateUserProfile = async (req, res) => {
         name: name,
       },
       select: {
-        // Hanya kembalikan data yang aman
         id: true,
         name: true,
         email: true,
@@ -43,10 +37,9 @@ const getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: {
-        createdAt: "desc", // Pengguna terbaru di atas
+        createdAt: "desc",
       },
       select: {
-        // Hanya pilih data yang aman untuk dikirim
         id: true,
         name: true,
         email: true,
@@ -66,10 +59,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-/**
- * [ADMIN] Menghapus seorang pengguna berdasarkan ID.
- * Pengguna tidak dapat menghapus akun mereka sendiri melalui endpoint ini.
- */
+
 const deleteUser = async (req, res) => {
   const { userId } = req.params;
   const adminId = req.user.id;
@@ -84,10 +74,7 @@ const deleteUser = async (req, res) => {
   }
 
   try {
-    // PENTING: Menghapus pengguna bisa gagal jika mereka masih terhubung
-    // dengan data lain (misalnya, sebagai 'author' dari kuis/tugas).
-    // Pastikan skema Prisma Anda memiliki aturan 'onDelete' yang sesuai
-    // atau tangani penghapusan data terkait secara manual sebelum menghapus pengguna.
+
     await prisma.user.delete({
       where: { id: userId },
     });
@@ -95,13 +82,10 @@ const deleteUser = async (req, res) => {
     res.json({ message: "Pengguna berhasil dihapus." });
   } catch (error) {
     console.error("Delete user error:", error);
-    // Tangani error jika pengguna tidak ditemukan atau ada masalah foreign key
     if (error.code === "P2025") {
-      // Prisma code for record not found
       return res.status(404).json({ message: "Pengguna tidak ditemukan." });
     }
     if (error.code === "P2003") {
-      // Prisma code for foreign key constraint violation
       return res
         .status(409)
         .json({
@@ -120,14 +104,12 @@ const updateUserRole = async (req, res) => {
   const { role } = req.body;
   const adminId = req.user.id;
 
-  // Validasi peran yang masuk
   if (!["ADMIN", "MENTOR", "STUDENT"].includes(role)) {
     return res
       .status(400)
       .json({ message: "Peran yang diberikan tidak valid." });
   }
 
-  // Mencegah admin mengubah perannya sendiri melalui endpoint ini
   if (userId === adminId) {
     return res
       .status(400)
@@ -138,7 +120,7 @@ const updateUserRole = async (req, res) => {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { role: role },
-      select: { id: true, name: true, email: true, role: true }, // Kirim kembali data yang diperbarui
+      select: { id: true, name: true, email: true, role: true }, 
     });
     res.json({
       message: `Peran untuk pengguna ${
@@ -149,7 +131,6 @@ const updateUserRole = async (req, res) => {
   } catch (error) {
     console.error("Update user role error:", error);
     if (error.code === "P2025") {
-      // Prisma code for record not found
       return res.status(404).json({ message: "Pengguna tidak ditemukan." });
     }
     res

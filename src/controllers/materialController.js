@@ -1,12 +1,6 @@
-// D:\backend_lms\src\controllers\materialController.js
-
 const prisma = require("../prismaClient");
 
-/**
- * [ADMIN/MENTOR] Membuat materi baru.
- */
 const createMaterial = async (req, res) => {
-  // FIX: Tambahkan thumbnailUrl ke dalam destructuring req.body
   const { title, description, driveUrl, thumbnailUrl } = req.body;
   const authorId = req.user.id;
 
@@ -22,7 +16,7 @@ const createMaterial = async (req, res) => {
         title,
         description,
         driveUrl,
-        thumbnailUrl: thumbnailUrl || null, // Simpan thumbnailUrl, atau null jika kosong
+        thumbnailUrl: thumbnailUrl || null,
         authorId,
       },
     });
@@ -35,9 +29,6 @@ const createMaterial = async (req, res) => {
   }
 };
 
-/**
- * Mengambil semua materi (untuk semua peran).
- */
 const getAllMaterials = async (req, res) => {
   try {
     const materials = await prisma.material.findMany({
@@ -77,9 +68,6 @@ const updateMaterial = async (req, res) => {
   }
 };
 
-/**
- * [ADMIN/MENTOR] Menghapus materi.
- */
 const deleteMaterial = async (req, res) => {
   const { materialId } = req.params;
   try {

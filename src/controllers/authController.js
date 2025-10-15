@@ -1,11 +1,8 @@
-// backend/src/controllers/authController.js
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const prisma = require("../prismaClient"); // Path disesuaikan
+const prisma = require("../prismaClient");
 
-// --- /api/auth/register ---
 const register = async (req, res) => {
-  // POST
   const { email, password, name, role } = req.body;
 
   if (!email || !password) {
@@ -39,20 +36,17 @@ const register = async (req, res) => {
       .json({ message: "Registrasi berhasil.", user: userResponse });
   } catch (error) {
     console.error("Register error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Terjadi kesalahan saat registrasi.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Terjadi kesalahan saat registrasi.",
+      error: error.message,
+    });
   }
 };
+
 const handleRegisterNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 
-// --- /api/auth/login ---
 const login = async (req, res) => {
-  // POST
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -90,12 +84,11 @@ const login = async (req, res) => {
       .json({ message: "Terjadi kesalahan saat login.", error: error.message });
   }
 };
+
 const handleLoginNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 
-// --- /api/auth/me ---
 const getCurrentUser = async (req, res) => {
-  // GET
   if (!req.user) {
     return res.status(401).json({ message: "Tidak terautentikasi." });
   }
@@ -121,6 +114,7 @@ const getCurrentUser = async (req, res) => {
       .json({ message: "Kesalahan server saat mengambil data pengguna." });
   }
 };
+
 const handleMeNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 
@@ -134,7 +128,6 @@ const handleOptions = (req, res) => {
 };
 
 const changePassword = async (req, res) => {
-  // ID pengguna didapatkan dari token yang sudah diverifikasi oleh middleware
   const userId = req.user.id;
   const { currentPassword, newPassword } = req.body;
 
@@ -151,7 +144,6 @@ const changePassword = async (req, res) => {
   }
 
   try {
-    // Ambil data pengguna dari database, termasuk hash password saat ini
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -160,17 +152,14 @@ const changePassword = async (req, res) => {
       return res.status(404).json({ message: "Pengguna tidak ditemukan." });
     }
 
-    // Bandingkan password saat ini yang dimasukkan dengan yang ada di database
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Password saat ini salah." });
     }
 
-    // Hash password baru sebelum disimpan
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password di database
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
@@ -185,28 +174,10 @@ const changePassword = async (req, res) => {
   }
 };
 
-
 module.exports = {
   changePassword,
-  register,
-  putRegister: handleRegisterNotImplemented,
-  deleteRegister: handleRegisterNotImplemented,
-  patchRegister: handleRegisterNotImplemented,
-  optionsRegister: handleOptions,
-  headRegister: handleRegisterNotImplemented,
-
   login,
-  putLogin: handleLoginNotImplemented,
-  deleteLogin: handleLoginNotImplemented,
-  patchLogin: handleLoginNotImplemented,
-  optionsLogin: handleOptions,
-  headLogin: handleLoginNotImplemented,
-
+  register,
   getCurrentUser,
-  postMe: handleMeNotImplemented,
-  putMe: handleMeNotImplemented,
-  deleteMe: handleMeNotImplemented,
-  patchMe: handleMeNotImplemented,
-  optionsMe: handleOptions,
-  headMe: handleMeNotImplemented,
+ 
 };

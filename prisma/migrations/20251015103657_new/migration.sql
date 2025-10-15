@@ -5,7 +5,7 @@ CREATE TYPE "Role" AS ENUM ('STUDENT', 'ADMIN', 'MENTOR');
 CREATE TYPE "AttendanceStatus" AS ENUM ('HADIR', 'IZIN', 'ALFA');
 
 -- CreateEnum
-CREATE TYPE "QuestionType" AS ENUM ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY');
+CREATE TYPE "QuestionType" AS ENUM ('MULTIPLE_CHOICE', 'TRUE_FALSE', 'ESSAY', 'MULTIPLE_RESPONSE');
 
 -- CreateEnum
 CREATE TYPE "QuizAttemptStatus" AS ENUM ('IN_PROGRESS', 'COMPLETED');
@@ -82,6 +82,7 @@ CREATE TABLE "Question" (
     "imageUrl" TEXT,
     "options" JSONB NOT NULL,
     "type" "QuestionType" NOT NULL,
+    "correctAnswerKeywords" TEXT,
     "quizId" TEXT NOT NULL,
 
     CONSTRAINT "Question_pkey" PRIMARY KEY ("id")

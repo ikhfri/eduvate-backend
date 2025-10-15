@@ -10,7 +10,6 @@ async function seedUsers() {
   const users = [];
   const filePath = path.join(__dirname, "users.csv");
 
-  // Baca CSV
   await new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
       .pipe(csv())

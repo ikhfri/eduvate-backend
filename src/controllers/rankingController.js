@@ -1,12 +1,9 @@
-// D:\backend_lms\src\controllers\rankingController.js
 
 const prisma = require("../prismaClient");
 
 const RANKING_VISIBILITY_KEY = "rankingVisibility";
 
-/**
- * [ADMIN/MENTOR] Mengubah status visibilitas peringkat menjadi terlihat.
- */
+
 const revealRanking = async (req, res) => {
   try {
     await prisma.systemSetting.upsert({
@@ -20,9 +17,7 @@ const revealRanking = async (req, res) => {
   }
 };
 
-/**
- * [ADMIN/MENTOR] Mengubah status visibilitas peringkat menjadi tersembunyi.
- */
+
 const hideRanking = async (req, res) => {
   try {
     await prisma.systemSetting.upsert({
@@ -36,19 +31,15 @@ const hideRanking = async (req, res) => {
   }
 };
 
-/**
- * Mengambil peringkat siswa dengan logika visibilitas.
- */
+
 const getTopStudentsRanking = async (req, res) => {
   const { role } = req.user;
   try {
-    // 1. Dapatkan pengaturan visibilitas
     const rankingSetting = await prisma.systemSetting.findUnique({
       where: { key: RANKING_VISIBILITY_KEY },
     });
     const isRevealed = rankingSetting?.value?.isRevealed || false;
 
-    // 2. Jika siswa dan peringkat belum diumumkan, kirim data kosong
     if (role === "STUDENT" && !isRevealed) {
       return res.json({
         message: "Peringkat belum diumumkan.",
@@ -60,8 +51,7 @@ const getTopStudentsRanking = async (req, res) => {
       });
     }
 
-    // 3. Lanjutkan logika pengambilan data jika diizinkan
-    // (Logika perhitungan skor sama seperti sebelumnya)
+
     const allStudents = await prisma.user.findMany({
       where: { role: "STUDENT" },
       select: { id: true, name: true, email: true },
@@ -94,7 +84,7 @@ const getTopStudentsRanking = async (req, res) => {
       data: {
         quizTitle: "Peringkat Siswa Teratas",
         attempts: rankedStudents,
-        isRevealed: isRevealed, // Kirim status visibilitas ke frontend
+        isRevealed: isRevealed,
       },
     });
   } catch (error) {

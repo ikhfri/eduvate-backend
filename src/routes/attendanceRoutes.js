@@ -7,7 +7,6 @@ const {
 
 const router = express.Router();
 
-// --- STUDENT ROUTE ---
 router.post(
   "/request-leave",
   authenticateToken,
@@ -15,7 +14,6 @@ router.post(
   attendanceController.requestLeave
 );
 
-// --- ADMIN/MENTOR ROUTES ---
 router.post(
   "/mark",
   authenticateToken,
@@ -35,7 +33,6 @@ router.get(
   attendanceController.getAttendanceHistoryByStudent
 );
 
-// [BARU] Route untuk ekspor
 router.get(
   "/recap/export",
   authenticateToken,
@@ -49,14 +46,14 @@ router.get(
   attendanceController.exportStudentHistory
 );
 router.get(
-  "/daily-recap", // <- Tambahkan endpoint ini
+  "/daily-recap", 
   authenticateToken,
   authorizeRole(["ADMIN", "MENTOR"]),
   attendanceController.getDailyRecap
 );
 
 router.post(
-  "/qr-check-in", // Endpoint baru kita
+  "/qr-check-in",
   authenticateToken,
   authorizeRole(["ADMIN", "MENTOR"]),
   attendanceController.checkInWithQR

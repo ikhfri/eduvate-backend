@@ -1,14 +1,8 @@
-	// D:\backend_lms\src\controllers\statsController.js
 
 	const prisma = require("../prismaClient");
 
-	/**
-	 * Mengambil statistik umum untuk dashboard.
-	 * Fungsi ini mengambil total jumlah tugas, kuis, dan pengguna.
-	 */
 	const getDetailedStats = async (req, res) => {
 	try {
-		// Menjalankan semua query agregat dalam satu transaksi
 		const [
 		userStatsRaw,
 		taskCount,
@@ -27,13 +21,11 @@
 		prisma.quizAttempt.aggregate({ _avg: { score: true } }),
 		]);
 
-		// Memformat hasil statistik pengguna agar sesuai dengan yang diharapkan frontend
 		const userStats = userStatsRaw.map((stat) => ({
 		role: stat.role,
 		count: stat._count._all,
 		}));
 
-		// Menyusun data respons akhir
 		const responseData = {
 		userStats: userStats,
 		taskStats: {
@@ -63,10 +55,7 @@
 	}
 	};
 
-	/**
-	 * Mengambil statistik ringkas untuk halaman dashboard utama,
-	 * mengembalikan data yang berbeda berdasarkan peran pengguna.
-	 */
+
 	const getDashboardStats = async (req, res) => {
     const { id: userId, role } = req.user;
 
@@ -140,7 +129,6 @@
 
     try {
       const [taskSubmissions, quizAttempts] = await prisma.$transaction([
-        // FIX: Menggunakan prisma.submission sesuai dengan schema.prisma Anda
         prisma.submission.findMany({
           where: { studentId: studentId },
           select: { grade: true },
@@ -151,7 +139,6 @@
         }),
       ]);
 
-      // Hitung statistik tugas
       const completedTasks = taskSubmissions.length;
       const gradedTasks = taskSubmissions.filter((sub) => sub.grade !== null);
       const totalTaskGrade = gradedTasks.reduce(
@@ -161,7 +148,6 @@
       const averageTaskGrade =
         gradedTasks.length > 0 ? totalTaskGrade / gradedTasks.length : null;
 
-      // Hitung statistik kuis
       const completedQuizzes = quizAttempts.length;
       const totalQuizScore = quizAttempts.reduce(
         (sum, attempt) => sum + attempt.score,

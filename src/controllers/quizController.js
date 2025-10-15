@@ -1,8 +1,6 @@
 const prisma = require("../prismaClient");
 const xlsx = require("xlsx");
 
-// --- Helper Functions ---
-
 const handleNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 
@@ -15,14 +13,12 @@ const handleOptions = (req, res) => {
   res.sendStatus(204);
 };
 
-// --- Validasi untuk Soal Kuis ---
-
 const validateQuestionOptions = (options, type, correctAnswerKeywords) => {
   if (type === "ESSAY") {
     if (!correctAnswerKeywords || typeof correctAnswerKeywords !== "string") {
       return "Soal esai harus memiliki kata kunci jawaban yang valid (string).";
     }
-    return null; // Valid untuk esai
+    return null;
   }
 
   if (!Array.isArray(options) || options.length === 0) {
@@ -44,14 +40,9 @@ const validateQuestionOptions = (options, type, correctAnswerKeywords) => {
     return "Setidaknya satu pilihan jawaban harus ditandai sebagai benar (isCorrect: true).";
   }
 
-  return null; // Valid
+  return null;
 };
 
-// === ADMIN/MENTOR ROUTES ===
-
-// --- /api/quizzes ---
-
-// Membuat kuis baru
 const createQuiz = async (req, res) => {
   const { title, description, submissionStartDate, deadline, duration } =
     req.body;
@@ -105,7 +96,6 @@ const createQuiz = async (req, res) => {
   }
 };
 
-// Mendapatkan semua kuis (untuk admin/mentor)
 const getAllQuizzesAdmin = async (req, res) => {
   try {
     const quizzes = await prisma.quiz.findMany({
@@ -124,9 +114,6 @@ const getAllQuizzesAdmin = async (req, res) => {
   }
 };
 
-// --- /api/quizzes/:quizId ---
-
-// Mendapatkan detail satu kuis (untuk admin/mentor)
 const getQuizByIdAdmin = async (req, res) => {
   const { quizId } = req.params;
   try {
@@ -149,7 +136,6 @@ const getQuizByIdAdmin = async (req, res) => {
   }
 };
 
-// Mengupdate kuis
 const updateQuiz = async (req, res) => {
   const { quizId } = req.params;
   const { title, description, submissionStartDate, deadline } = req.body;
@@ -265,16 +251,13 @@ const patchQuiz = async (req, res) => {
     res.json({ message: "Kuis berhasil di-patch.", quiz: patchedQuiz });
   } catch (error) {
     console.error("Patch quiz error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal melakukan patch pada kuis.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal melakukan patch pada kuis.",
+      error: error.message,
+    });
   }
 };
 
-// Menghapus kuis
 const deleteQuiz = async (req, res) => {
   const { quizId } = req.params;
   const userId = req.user.id;
@@ -299,9 +282,6 @@ const deleteQuiz = async (req, res) => {
   }
 };
 
-// --- /api/quizzes/:quizId/questions ---
-
-// Menambahkan soal baru ke kuis
 const addQuestionToQuiz = async (req, res) => {
   const { quizId } = req.params;
   const { text, options, type, imageUrl, correctAnswerKeywords } = req.body;
@@ -311,11 +291,9 @@ const addQuestionToQuiz = async (req, res) => {
     return res.status(400).json({ message: "Teks soal dibutuhkan." });
   }
   if (type !== "ESSAY" && !options) {
-    return res
-      .status(400)
-      .json({
-        message: "Pilihan jawaban (options) dibutuhkan untuk tipe selain esai.",
-      });
+    return res.status(400).json({
+      message: "Pilihan jawaban (options) dibutuhkan untuk tipe selain esai.",
+    });
   }
 
   const optionsError = validateQuestionOptions(
@@ -360,7 +338,6 @@ const addQuestionToQuiz = async (req, res) => {
   }
 };
 
-// Mendapatkan semua soal dari satu kuis (untuk admin review/edit)
 const getQuestionsForQuizAdmin = async (req, res) => {
   const { quizId } = req.params;
   try {
@@ -380,9 +357,6 @@ const getQuestionsForQuizAdmin = async (req, res) => {
   }
 };
 
-// --- /api/quizzes/:quizId/questions/:questionId ---
-
-// Mengupdate soal kuis
 const updateQuestion = async (req, res) => {
   const { questionId } = req.params;
   const { text, type, options, imageUrl, correctAnswerKeywords } = req.body;
@@ -480,16 +454,13 @@ const patchQuestion = async (req, res) => {
     });
   } catch (error) {
     console.error("Patch question error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal melakukan patch pada pertanyaan.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal melakukan patch pada pertanyaan.",
+      error: error.message,
+    });
   }
 };
 
-// Menghapus soal dari kuis
 const deleteQuestion = async (req, res) => {
   const { quizId, questionId } = req.params;
   const userId = req.user.id;
@@ -519,9 +490,6 @@ const deleteQuestion = async (req, res) => {
   }
 };
 
-// === STUDENT ROUTES ===
-
-// --- /api/quizzes (GET - untuk siswa) ---
 const getAvailableQuizzesForStudent = async (req, res) => {
   const now = new Date();
   try {
@@ -552,7 +520,6 @@ const getAvailableQuizzesForStudent = async (req, res) => {
   }
 };
 
-// --- /api/quizzes/:quizId (GET - untuk siswa mengambil kuis) ---
 const getQuizForStudentToTake = async (req, res) => {
   const { quizId } = req.params;
   const studentId = req.user.id;
@@ -563,12 +530,10 @@ const getQuizForStudentToTake = async (req, res) => {
       where: { quizId, studentId, status: "COMPLETED" },
     });
     if (completedAttempt) {
-      return res
-        .status(403)
-        .json({
-          message: "Anda sudah pernah menyelesaikan kuis ini.",
-          attemptId: completedAttempt.id,
-        });
+      return res.status(403).json({
+        message: "Anda sudah pernah menyelesaikan kuis ini.",
+        attemptId: completedAttempt.id,
+      });
     }
 
     const quizFromDb = await prisma.quiz.findUnique({
@@ -595,11 +560,9 @@ const getQuizForStudentToTake = async (req, res) => {
         ? now >= quizFromDb.submissionStartDate
         : true) && now <= quizFromDb.deadline;
     if (!isQuizActive) {
-      return res
-        .status(403)
-        .json({
-          message: "Kuis ini tidak aktif atau sudah melewati batas waktu.",
-        });
+      return res.status(403).json({
+        message: "Kuis ini tidak aktif atau sudah melewati batas waktu.",
+      });
     }
 
     let attempt = await prisma.quizAttempt.findFirst({
@@ -681,9 +644,6 @@ const getQuizForStudentToTake = async (req, res) => {
   }
 };
 
-// --- /api/quizzes/:quizId/attempt ---
-
-// Siswa mengirimkan jawaban kuis
 const submitQuizAttempt = async (req, res) => {
   const { quizId } = req.params;
   const studentId = req.user.id;
@@ -708,11 +668,9 @@ const submitQuizAttempt = async (req, res) => {
     });
 
     if (!existingAttempt) {
-      return res
-        .status(404)
-        .json({
-          message: "Sesi kuis tidak ditemukan atau sudah selesai dikerjakan.",
-        });
+      return res.status(404).json({
+        message: "Sesi kuis tidak ditemukan atau sudah selesai dikerjakan.",
+      });
     }
 
     let correctAnswersCount = 0;
@@ -783,24 +741,19 @@ const submitQuizAttempt = async (req, res) => {
       },
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Jawaban kuis berhasil dikirim.",
-        attemptId: finalAttempt.id,
-      });
+    res.status(200).json({
+      message: "Jawaban kuis berhasil dikirim.",
+      attemptId: finalAttempt.id,
+    });
   } catch (error) {
     console.error("Submit quiz attempt error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengirimkan jawaban kuis.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengirimkan jawaban kuis.",
+      error: error.message,
+    });
   }
 };
 
-// --- /api/quizzes/:quizId/my-attempt ---
 const getMyQuizAttemptResult = async (req, res) => {
   const { quizId } = req.params;
   const studentId = req.user.id;
@@ -830,27 +783,21 @@ const getMyQuizAttemptResult = async (req, res) => {
     });
 
     if (!attempt) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Anda belum mengerjakan kuis ini atau hasil tidak ditemukan.",
-        });
+      return res.status(404).json({
+        message: "Anda belum mengerjakan kuis ini atau hasil tidak ditemukan.",
+      });
     }
 
     res.json({ message: "Berhasil mengambil hasil kuis", data: attempt });
   } catch (error) {
     console.error("Get my quiz attempt result error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengambil hasil kuis Anda.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengambil hasil kuis Anda.",
+      error: error.message,
+    });
   }
 };
 
-// --- /api/quizzes/:quizId/results (ADMIN/MENTOR) ---
 const getQuizResultsAndRanking = async (req, res) => {
   const { quizId } = req.params;
   try {
@@ -895,12 +842,10 @@ const getQuizResultsAndRanking = async (req, res) => {
     });
   } catch (error) {
     console.error("Get quiz results and ranking error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengambil hasil dan ranking kuis.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengambil hasil dan ranking kuis.",
+      error: error.message,
+    });
   }
 };
 
@@ -934,11 +879,9 @@ const startOrResumeAttempt = async (req, res) => {
       (quiz.submissionStartDate ? now >= quiz.submissionStartDate : true) &&
       now <= quiz.deadline;
     if (!isQuizActive) {
-      return res
-        .status(403)
-        .json({
-          message: "Kuis ini tidak aktif atau sudah melewati batas waktu.",
-        });
+      return res.status(403).json({
+        message: "Kuis ini tidak aktif atau sudah melewati batas waktu.",
+      });
     }
 
     const completedAttempt = await prisma.quizAttempt.findFirst({
@@ -1050,11 +993,9 @@ const saveAttemptProgress = async (req, res) => {
       }
       const answer = progress.answers[questionId];
       if (typeof answer !== "object" || answer.isAnswered === undefined) {
-        return res
-          .status(400)
-          .json({
-            message: `Format jawaban untuk soal ${questionId} tidak valid.`,
-          });
+        return res.status(400).json({
+          message: `Format jawaban untuk soal ${questionId} tidak valid.`,
+        });
       }
       const question = attempt.quiz.questions.find((q) => q.id === questionId);
       if (
@@ -1062,11 +1003,9 @@ const saveAttemptProgress = async (req, res) => {
         answer.selectedOptionIndex !== undefined
       ) {
         if (answer.selectedOptionIndex >= question.options.length) {
-          return res
-            .status(400)
-            .json({
-              message: `Indeks jawaban untuk soal ${questionId} tidak valid.`,
-            });
+          return res.status(400).json({
+            message: `Indeks jawaban untuk soal ${questionId} tidak valid.`,
+          });
         }
       }
     }
@@ -1136,12 +1075,10 @@ const getAttemptsForQuiz = async (req, res) => {
     });
   } catch (error) {
     console.error("Get attempts for quiz error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Gagal mengambil data percobaan kuis.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal mengambil data percobaan kuis.",
+      error: error.message,
+    });
   }
 };
 
@@ -1162,12 +1099,10 @@ const deleteAttempt = async (req, res) => {
         .status(404)
         .json({ message: "Percobaan kuis tidak ditemukan." });
     }
-    res
-      .status(500)
-      .json({
-        message: "Gagal menghapus percobaan kuis.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Gagal menghapus percobaan kuis.",
+      error: error.message,
+    });
   }
 };
 

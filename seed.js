@@ -5,15 +5,13 @@ const prisma = new PrismaClient();
 
 async function seedAdmin() {
   try {
-    // Hash the admin password
-    const hashedPassword = await bcrypt.hash("2wsx1qaz", 10); // Replace "admin123" with a secure password
+    const hashedPassword = await bcrypt.hash("2wsx1qaz", 10); 
 
-    // Create the admin user
     const admin = await prisma.user.create({
       data: {
-        email: "admin@nevtik.org", // Replace with desired admin email
+        email: "admin@nupidstinger.com", 
         password: hashedPassword,
-        name: "Nevtik Admin",
+        name: "TEK Admin",
         role: "ADMIN",
       },
     });

@@ -5,11 +5,10 @@ const upload = require("../middleware/uploadMiddleware");
 const cacheMiddleware = require("../middleware/cachingMiddleware");
 const router = express.Router();
 
-// --- /api/tasks ---
 router
   .route("/")
   .get(
-    cacheMiddleware(1), // Cache daftar task (global untuk semua user)
+    cacheMiddleware(1), 
     taskController.getAllTasks
   )
   .post(authorizeRole(["ADMIN", "MENTOR"]), taskController.createTask)
@@ -19,7 +18,6 @@ router
   .options(taskController.optionsAllTasks)
   .head(taskController.headAllTasks);
 
-// --- /api/tasks/:taskId ---
 router
   .route("/:taskId")
   .get(
@@ -32,7 +30,6 @@ router
   .options(taskController.optionsTaskById)
   .head(taskController.headTaskById);
 
-// --- /api/tasks/:taskId/submit --- (❌ JANGAN cache)
 router
   .route("/:taskId/submit")
   .post(
@@ -55,7 +52,6 @@ router
   .options(taskController.optionsSubmitTask)
   .head(taskController.headSubmitTask);
 
-// --- /api/tasks/:taskId/submissions ---
 router
   .route("/:taskId/submissions")
   .get(
@@ -78,7 +74,6 @@ router
   .options(taskController.optionsSubmissionsForTask)
   .head(taskController.headSubmissionsForTask);
 
-// --- /api/tasks/:taskId/my-submission --- (❌ personal user, no cache)
 router
   .route("/:taskId/my-submission")
   .get(authorizeRole(["STUDENT"]), taskController.getMySubmissionForTask)
@@ -89,7 +84,6 @@ router
   .options(taskController.optionsMySubmission)
   .head(taskController.headMySubmission);
 
-// --- /api/tasks/submissions/:submissionId/grade ---
 router
   .route("/submissions/:submissionId/grade")
   .put(authorizeRole(["ADMIN", "MENTOR"]), taskController.gradeSubmission)
@@ -106,12 +100,11 @@ router
   .options(taskController.optionsGrade)
   .head(taskController.headGrade);
 
-// --- /api/tasks/submissions/:submissionId/file ---
 router
   .route("/submissions/:submissionId/file")
   .get(
     authorizeRole(["ADMIN", "MENTOR", "STUDENT"]),
-    cacheMiddleware(2), // File bisa di-cache sebentar
+    cacheMiddleware(2), 
     taskController.getSubmissionFile
   )
   .delete(

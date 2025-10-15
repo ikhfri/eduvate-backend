@@ -1,24 +1,18 @@
-// D:\backend_lms\src\routes\userRoutes.js
 
 const express = require("express");
 const userController = require("../controllers/userController");
-const authController = require("../controllers/authController"); // Path disesuaikan
+const authController = require("../controllers/authController");
 
-// FIX: Menggabungkan impor dari middleware yang sama
 const {
   authenticateToken,
   authorizeRole,
 } = require("../middleware/authMiddleware");
 
-// FIX: Menghapus baris 'require("..")' yang menyebabkan impor melingkar
-// const { route } = require("..");
 
 const router = express.Router();
 
-// Route untuk update profil pengguna yang sedang login
 router.put("/profile", authenticateToken, userController.updateUserProfile);
 
-// Route untuk admin mendapatkan semua pengguna
 router.get(
   "/",
   authenticateToken,
@@ -26,7 +20,6 @@ router.get(
   userController.getAllUsers
 );
 
-// Route untuk admin mengubah peran pengguna
 router.put(
   "/:userId/role",
   authenticateToken,
@@ -34,8 +27,6 @@ router.put(
   userController.updateUserRole
 );
 
-// FIX: Menghapus duplikasi route delete
-// Route untuk admin menghapus pengguna
 router.delete(
   "/:userId",
   authenticateToken,

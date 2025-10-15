@@ -6,7 +6,6 @@ const authenticateToken = (req, res, next) => {
     return next();
   }
 
-  // Ambil token dari Authorization atau Cookie
   let token = null;
   const authHeader = req.headers["authorization"];
   if (authHeader && authHeader.startsWith("Bearer ")) {

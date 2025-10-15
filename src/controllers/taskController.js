@@ -1,5 +1,4 @@
-// backend/src/controllers/taskController.js
-const prisma = require("../prismaClient"); // Path disesuaikan
+const prisma = require("../prismaClient"); 
 const fs = require("fs");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
@@ -9,12 +8,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const UPLOAD_FOLDER_NAME = "nevtik"; // bucket dan folder di supabase storage
+const UPLOAD_FOLDER_NAME = "nevtik"; 
 
-const projectRoot = process.cwd(); // Root direktori proyek
-// Hilangkan './' jika ada
+const projectRoot = process.cwd(); 
 
-// --- Helper Functions --
 const handleNotImplemented = (req, res) =>
   res.status(501).json({ message: "Not Implemented" });
 const handleOptions = (req, res) => {
@@ -26,9 +23,7 @@ const handleOptions = (req, res) => {
   res.sendStatus(204);
 };
 
-// --- /api/tasks ---
 const createTask = async (req, res) => {
-  // POST
   const { title, description, submissionStartDate, deadline } = req.body;
   const authorId = req.user.id;
 
@@ -68,33 +63,25 @@ const createTask = async (req, res) => {
   }
 };
 
-// backend/src/controllers/taskController.js
 
-// backend/src/controllers/taskController.js
-// ... (kode lain yang sudah ada)
-
-// --- /api/tasks ---
 const getAllTasks = async (req, res) => {
   try {
-    const userId = req.user.id; // Dapatkan ID pengguna yang login dari middleware otentikasi
-    const userRole = req.user.role; // Dapatkan peran pengguna
+    const userId = req.user.id; 
+    const userRole = req.user.role; 
 
     let tasks = await prisma.task.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { name: true, email: true } },
         _count: {
-          // Untuk menghitung total submission (berguna untuk admin/mentor)
           select: { submissions: true },
         },
       },
     });
 
-    // Jika pengguna adalah siswa, coba dapatkan submission mereka untuk setiap tugas
     if (userRole === "STUDENT") {
       const taskIds = tasks.map((task) => task.id);
       if (taskIds.length > 0) {
-        // Hanya query jika ada tugas
         const submissions = await prisma.submission.findMany({
           where: {
             taskId: { in: taskIds },
@@ -104,31 +91,25 @@ const getAllTasks = async (req, res) => {
             taskId: true,
             grade: true,
             submittedAt: true,
-            // Anda bisa pilih field lain dari submission jika perlu ditampilkan di kartu
           },
         });
 
-        // Buat map untuk akses cepat ke submission berdasarkan taskId
         const submissionsMap = new Map();
         submissions.forEach((sub) => submissionsMap.set(sub.taskId, sub));
 
-        // Tambahkan informasi mySubmission ke setiap tugas
         tasks = tasks.map((task) => ({
           ...task,
           mySubmission: submissionsMap.get(task.id) || null,
         }));
       } else {
-        // Jika tidak ada tugas, pastikan setiap tugas (jika ada) memiliki mySubmission: null
         tasks = tasks.map((task) => ({
           ...task,
           mySubmission: null,
         }));
       }
     }
-    // Untuk admin/mentor, properti mySubmission tidak akan ditambahkan
-    // atau akan null, mereka akan melihat detail submission di halaman lain.
 
-    res.json(tasks); // Kirim tasks yang sudah ada info submission (jika siswa)
+    res.json(tasks); 
   } catch (error) {
     console.error("Get all tasks error:", error);
     res
@@ -137,16 +118,11 @@ const getAllTasks = async (req, res) => {
   }
 };
 
-// ... (sisa fungsi controller Anda)
 
 module.exports = {
-  // ... (ekspor fungsi-fungsi Anda yang lain)
   getAllTasks,
-  // ... (ekspor fungsi-fungsi Anda yang lain)
 };
-// --- /api/tasks/:taskId ---
 const getTaskById = async (req, res) => {
-  // GET
   const { taskId } = req.params;
   try {
     const task = await prisma.task.findUnique({
@@ -165,7 +141,6 @@ const getTaskById = async (req, res) => {
 };
 
 const updateTask = async (req, res) => {
-  // PUT
   const { taskId } = req.params;
   const { title, description, submissionStartDate, deadline } = req.body;
   const userId = req.user.id;
@@ -301,12 +276,9 @@ const deleteTask = async (req, res) => {
       });
     }
 
-    // Ambil nama file dari URL publik Supabase Storage
-    // Misal URL seperti https://xyz.supabase.co/storage/v1/object/public/nevtik/filename.ext
     const urlParts = submission.fileUrl.split("/");
     const fileName = urlParts[urlParts.length - 1];
 
-    // Hapus file dari Supabase Storage
     const { error: deleteError } = await supabase.storage
       .from(UPLOAD_FOLDER_NAME)
       .remove([fileName]);
@@ -319,7 +291,6 @@ const deleteTask = async (req, res) => {
       });
     }
 
-    // Update database submission, kosongkan fileUrl dan tambahkan komentar
     const updatedSubmission = await prisma.submission.update({
       where: { id: submissionId },
       data: {
@@ -344,7 +315,6 @@ const deleteTask = async (req, res) => {
 };
 
 
-// --- /api/tasks/:taskId/submit ---
 
 const submitTask = async (req, res) => {
   const { taskId } = req.params;
@@ -380,13 +350,8 @@ const submitTask = async (req, res) => {
         .json({ message: "Anda sudah pernah mengirimkan tugas ini." });
     }
 
-    // Gunakan nama file asli
     const originalFileName = req.file.originalname;
 
-    // Jika kamu khawatir overwrite, bisa tambahkan timestamp seperti ini:
-    // const uniqueFileName = `${Date.now()}-${originalFileName}`;
-
-    // Kalau yakin tidak masalah overwrite, pakai saja:
     const uniqueFileName = originalFileName;
 
     const { data, error: uploadError } = await supabase.storage
@@ -394,19 +359,17 @@ const submitTask = async (req, res) => {
       .upload(uniqueFileName, req.file.buffer, {
         contentType: req.file.mimetype,
         cacheControl: "3600",
-        upsert: false, // jangan overwrite file jika sudah ada
+        upsert: false, 
       });
 
     if (uploadError) {
       throw uploadError;
     }
 
-    // Dapatkan public URL file
     const { data: publicUrlData } = supabase.storage
       .from(UPLOAD_FOLDER_NAME)
       .getPublicUrl(uniqueFileName);
 
-    // Simpan url file ke database
     const submission = await prisma.submission.create({
       data: {
         taskId,
@@ -432,9 +395,7 @@ const submitTask = async (req, res) => {
   }
 };
 
-// --- /api/tasks/:taskId/submissions ---
 const getSubmissionsForTask = async (req, res) => {
-  // GET
   const { taskId } = req.params;
   try {
     const submissions = await prisma.submission.findMany({
@@ -452,9 +413,7 @@ const getSubmissionsForTask = async (req, res) => {
   }
 };
 
-// --- /api/tasks/:taskId/my-submission ---
 const getMySubmissionForTask = async (req, res) => {
-  // GET
   const { taskId } = req.params;
   const studentId = req.user.id;
   try {
@@ -481,9 +440,7 @@ const getMySubmissionForTask = async (req, res) => {
   }
 };
 
-// --- /api/tasks/submissions/:submissionId/grade ---
 const gradeSubmission = async (req, res) => {
-  // PUT
   const { submissionId } = req.params;
   const { grade, comment } = req.body;
 
@@ -514,13 +471,10 @@ const gradeSubmission = async (req, res) => {
   }
 };
 const patchGradeSubmission = async (req, res) => {
-  // PATCH
   return gradeSubmission(req, res);
 };
 
-// --- /api/tasks/submissions/:submissionId/file ---
 const deleteSubmissionFile = async (req, res) => {
-  // DELETE
   const { submissionId } = req.params;
 
   try {
@@ -538,8 +492,8 @@ const deleteSubmissionFile = async (req, res) => {
       });
     }
 
-    const fileName = path.basename(submission.fileUrl); // Ambil nama file dari /uploads/filename.ext
-    const filePath = path.join(projectRoot, UPLOAD_FOLDER_NAME, fileName); // Path absolut ke file
+    const fileName = path.basename(submission.fileUrl); 
+    const filePath = path.join(projectRoot, UPLOAD_FOLDER_NAME, fileName); 
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);

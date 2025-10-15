@@ -1,11 +1,10 @@
 const express = require("express");
-const authController = require("../controllers/authController"); // Path disesuaikan
+const authController = require("../controllers/authController"); 
 const { authorizeRole } = require("../middleware/authMiddleware");
 
-const { authenticateToken } = require("../middleware/authMiddleware"); // Path disesuaikan
+const { authenticateToken } = require("../middleware/authMiddleware"); 
 const router = express.Router();
 
-// /api/auth/register
 router.post(
   "/add-user",
   authorizeRole(["ADMIN"]),

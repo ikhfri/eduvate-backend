@@ -1,22 +1,15 @@
-// D:\backend_lms\src\controllers\attendanceController.js
-
 const prisma = require("../prismaClient");
 const {
   startOfWeek,
   endOfWeek,
   startOfDay,
-  endOfDay,
   parseISO,
-  addDays, // <-- Sering lupa diimpor
-  format, // <-- Sering lupa diimpor
+  addDays,
+  format,
 } = require("date-fns");
-const { id: localeID } = require("date-fns/locale"); // <-- UBAH DI SINI. Impor locale sekali saja.
+const { id: localeID } = require("date-fns/locale");
+const xlsx = require("xlsx");
 
-const xlsx = require("xlsx"); // Pastikan Anda sudah menginstal xlsx
-
-/**
- * [STUDENT] Mengajukan izin untuk hari ini.
- */
 const requestLeave = async (req, res) => {
   const studentId = req.user.id;
   const { notes } = req.body;
@@ -27,35 +20,25 @@ const requestLeave = async (req, res) => {
       where: { studentId_date: { studentId, date: today } },
     });
     if (existingAttendance) {
-      return res
-        .status(409)
-        .json({
-          message: `Anda sudah memiliki status absensi '${existingAttendance.status}' untuk hari ini.`,
-        });
+      return res.status(409).json({
+        message: `Anda sudah memiliki status absensi '${existingAttendance.status}' untuk hari ini.`,
+      });
     }
     const newLeaveRequest = await prisma.attendance.create({
       data: { studentId, date: today, status: "IZIN", notes },
     });
-    res
-      .status(201)
-      .json({
-        message: "Pengajuan izin berhasil dicatat.",
-        data: newLeaveRequest,
-      });
+    res.status(201).json({
+      message: "Pengajuan izin berhasil dicatat.",
+      data: newLeaveRequest,
+    });
   } catch (error) {
     res.status(500).json({ message: "Gagal mengajukan izin." });
   }
 };
 
-/**
- * [ADMIN/MENTOR] Menandai kehadiran siswa (Hadir/Alfa).
- */
 const markAttendance = async (req, res) => {
   const { studentId, date, status } = req.body;
   const markedById = req.user.id;
-
-  // FIX: Menggunakan parseISO untuk menghindari masalah timezone
-  // Ini akan menginterpretasikan '2025-07-31' sebagai awal hari pada tanggal tersebut di zona waktu server
   const targetDate = startOfDay(parseISO(date));
 
   if (!["HADIR", "ALFA"].includes(status)) {
@@ -77,12 +60,8 @@ const markAttendance = async (req, res) => {
   }
 };
 
-/**
- * [ADMIN/MENTOR] Mengambil rekap absensi mingguan.
- */
 const getWeeklyRecap = async (req, res) => {
   const { weekStartDate } = req.query;
-  // FIX: Menggunakan parseISO untuk konsistensi
   const startDate = startOfWeek(
     parseISO(weekStartDate || new Date().toISOString()),
     { weekStartsOn: 1 }
@@ -121,14 +100,10 @@ const getWeeklyRecap = async (req, res) => {
   }
 };
 
-/**
- * [ADMIN/MENTOR] Mengambil riwayat absensi per siswa.
- */
 const getAttendanceHistoryByStudent = async (req, res) => {
   const { studentId } = req.params;
 
   try {
-    // Ambil data siswa dan riwayat absensinya secara bersamaan
     const student = await prisma.user.findUnique({
       where: { id: studentId },
       select: {
@@ -136,10 +111,7 @@ const getAttendanceHistoryByStudent = async (req, res) => {
         name: true,
         email: true,
         attendances: {
-          // Ini akan mengambil relasi absensi
-          orderBy: {
-            date: "desc", // Urutkan dari yang terbaru
-          },
+          orderBy: { date: "desc" },
         },
       },
     });
@@ -148,7 +120,6 @@ const getAttendanceHistoryByStudent = async (req, res) => {
       return res.status(404).json({ message: "Siswa tidak ditemukan." });
     }
 
-    // Ubah nama relasi agar lebih jelas di frontend
     const responseData = {
       student: {
         id: student.id,
@@ -164,9 +135,6 @@ const getAttendanceHistoryByStudent = async (req, res) => {
   }
 };
 
-/**
- * [BARU] Mengekspor rekap mingguan ke Excel.
- */
 const exportWeeklyRecap = async (req, res) => {
   console.log("--- FUNGSI exportWeeklyRecap MULAI DIJALANKAN ---");
   try {
@@ -183,13 +151,19 @@ const exportWeeklyRecap = async (req, res) => {
       where: { date: { gte: startDate, lte: endDate } },
     });
 
-    const weekDays = Array.from({ length: 7 }).map((_, i) => startOfDay(addDays(startDate, i)));
+    const weekDays = Array.from({ length: 7 }).map((_, i) =>
+      startOfDay(addDays(startDate, i))
+    );
 
     const dataForExcel = students.map((student) => {
       const row = { "Nama Siswa": student.name || "N/A", Email: student.email };
       weekDays.forEach((day) => {
-        const columnHeader = format(day, "EEE, dd MMM", { locale: localeID }); // <-- PERBAIKAN DI SINI
-        const record = attendances.find((a) => a.studentId === student.id && startOfDay(a.date).getTime() === day.getTime());
+        const columnHeader = format(day, "EEE, dd MMM", { locale: localeID });
+        const record = attendances.find(
+          (a) =>
+            a.studentId === student.id &&
+            startOfDay(a.date).getTime() === day.getTime()
+        );
         row[columnHeader] = record ? record.status : "-";
       });
       return row;
@@ -199,20 +173,26 @@ const exportWeeklyRecap = async (req, res) => {
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, "Rekap Mingguan");
 
-    const filename = `rekap-absensi-mingguan-${format(startDate, "yyyy-MM-dd")}.xlsx`;
+    const filename = `rekap-absensi-mingguan-${format(
+      startDate,
+      "yyyy-MM-dd"
+    )}.xlsx`;
     const buffer = xlsx.write(workbook, { bookType: "xlsx", type: "buffer" });
 
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     res.send(buffer);
   } catch (error) {
-    console.error("ERROR EXPORT REKAP MINGGUAN:", error); // Tambahkan log error detail
-    res.status(500).json({ message: "Gagal mengekspor rekap.", error: error.message });
+    console.error("ERROR EXPORT REKAP MINGGUAN:", error);
+    res
+      .status(500)
+      .json({ message: "Gagal mengekspor rekap.", error: error.message });
   }
 };
-/**
- * [BARU] Mengekspor riwayat absensi satu siswa ke Excel.
- */
+
 const exportStudentHistory = async (req, res) => {
   console.log("--- FUNGSI exportStudentHistory MULAI DIJALANKAN ---");
   try {
@@ -221,7 +201,8 @@ const exportStudentHistory = async (req, res) => {
       where: { id: studentId },
       select: { name: true, email: true },
     });
-    if (!student) return res.status(404).json({ message: "Siswa tidak ditemukan." });
+    if (!student)
+      return res.status(404).json({ message: "Siswa tidak ditemukan." });
 
     const history = await prisma.attendance.findMany({
       where: { studentId },
@@ -230,7 +211,7 @@ const exportStudentHistory = async (req, res) => {
 
     const dataForExcel = history.map((rec) => ({
       Tanggal: format(new Date(rec.date), "EEEE, dd MMMM yyyy", {
-        locale: localeID, // <-- PERBAIKAN DI SINI
+        locale: localeID,
       }),
       Status: rec.status,
       Catatan: rec.notes || "-",
@@ -240,19 +221,27 @@ const exportStudentHistory = async (req, res) => {
     const workbook = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(workbook, worksheet, "Riwayat Absensi");
 
-    const filename = `riwayat-absensi-${student.name?.replace(/\s+/g, "-") || student.email}.xlsx`;
+    const filename = `riwayat-absensi-${
+      student.name?.replace(/\s+/g, "-") || student.email
+    }.xlsx`;
     const buffer = xlsx.write(workbook, { bookType: "xlsx", type: "buffer" });
 
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     res.send(buffer);
   } catch (error) {
-    console.error("ERROR EXPORT RIWAYAT SISWA:", error); // Tambahkan log error detail
-    res.status(500).json({ message: "Gagal mengekspor riwayat.", error: error.message });
+    console.error("ERROR EXPORT RIWAYAT SISWA:", error);
+    res
+      .status(500)
+      .json({ message: "Gagal mengekspor riwayat.", error: error.message });
   }
 };
+
 const getDailyRecap = async (req, res) => {
-  const { date } = req.query; // Mengharapkan format 'yyyy-MM-dd'
+  const { date } = req.query;
   if (!date) {
     return res.status(400).json({ message: "Parameter tanggal dibutuhkan." });
   }
@@ -260,13 +249,11 @@ const getDailyRecap = async (req, res) => {
   const targetDate = startOfDay(parseISO(date));
 
   try {
-    // 1. Ambil semua siswa
     const students = await prisma.user.findMany({
       where: { role: "STUDENT" },
       select: { id: true, name: true, email: true },
     });
 
-    // 2. Ambil data absensi hanya untuk tanggal yang dipilih
     const attendances = await prisma.attendance.findMany({
       where: {
         date: targetDate,
@@ -278,7 +265,6 @@ const getDailyRecap = async (req, res) => {
       },
     });
 
-    // 3. Buat map untuk pencarian cepat
     const attendanceMap = new Map(
       attendances.map((a) => [
         a.studentId,
@@ -286,10 +272,9 @@ const getDailyRecap = async (req, res) => {
       ])
     );
 
-    // 4. Gabungkan daftar siswa dengan status absensi mereka
     const dailyRecap = students.map((student) => ({
       ...student,
-      attendance: attendanceMap.get(student.id) || null, // null jika belum ada catatan
+      attendance: attendanceMap.get(student.id) || null,
     }));
 
     res.json({ data: dailyRecap });
@@ -303,7 +288,7 @@ const getDailyRecap = async (req, res) => {
 
 const checkInWithQR = async (req, res) => {
   const { studentId } = req.body;
-  const markedById = req.user.id; // ID Admin/Mentor yang melakukan scan
+  const markedById = req.user.id;
   const today = startOfDay(new Date());
 
   if (!studentId) {
@@ -311,7 +296,6 @@ const checkInWithQR = async (req, res) => {
   }
 
   try {
-    // 1. Verifikasi apakah siswa ada
     const student = await prisma.user.findUnique({
       where: { id: studentId, role: "STUDENT" },
     });
@@ -320,7 +304,6 @@ const checkInWithQR = async (req, res) => {
       return res.status(404).json({ message: "Siswa tidak ditemukan." });
     }
 
-    // 2. Cek apakah siswa sudah absen hari ini
     const existingAttendance = await prisma.attendance.findUnique({
       where: { studentId_date: { studentId, date: today } },
     });
@@ -331,7 +314,6 @@ const checkInWithQR = async (req, res) => {
         .json({ message: `Sudah Absen: ${student.name || student.email}` });
     }
 
-    // 3. Buat catatan kehadiran baru
     await prisma.attendance.create({
       data: {
         studentId,
@@ -355,8 +337,8 @@ module.exports = {
   markAttendance,
   getWeeklyRecap,
   getAttendanceHistoryByStudent,
-  getDailyRecap, // <-- Tambahkan fungsi baru ini
-  exportWeeklyRecap, // <-- Tambahkan
-  exportStudentHistory, // <-- Tambahkan
-  checkInWithQR, // <-- Tambahkan fungsi baru ini
+  getDailyRecap,
+  exportWeeklyRecap,
+  exportStudentHistory,
+  checkInWithQR,
 };

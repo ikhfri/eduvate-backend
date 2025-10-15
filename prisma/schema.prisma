@@ -1,15 +1,12 @@
-// datasource dan generator
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// Enum untuk peran dan tipe pertanyaan
 enum Role {
   STUDENT
   ADMIN
@@ -34,8 +31,6 @@ enum QuizAttemptStatus {
   COMPLETED
 }
 
-// --- Model-model Utama ---
-
 model SystemSetting {
   id    String @id @default(cuid())
   key   String @unique
@@ -51,15 +46,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relasi
   tasks        Task[]        @relation("UserTasks")
   submissions  Submission[]  @relation("UserSubmissions")
   quizzes      Quiz[]        @relation("UserQuizzes")
   quizAttempts QuizAttempt[] @relation("UserQuizAttempts")
-    materials Material[] @relation("UserMaterials")
-    attendances      Attendance[] @relation("UserAttendances")
+  materials    Material[]    @relation("UserMaterials")
+  attendances  Attendance[]  @relation("UserAttendances")
   markedAttendances Attendance[] @relation("MarkedAttendances")
-
 }
 
 model Task {
@@ -71,7 +64,6 @@ model Task {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  // Relasi
   authorId String
   author   User   @relation("UserTasks", fields: [authorId], references: [id], onDelete: Cascade)
   submissions Submission[]
@@ -87,7 +79,6 @@ model Submission {
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relasi
   taskId    String
   task      Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   studentId String
@@ -102,13 +93,12 @@ model Quiz {
   id                  String    @id @default(cuid())
   title               String
   description         String?   @db.Text
-  duration            Int?      // Durasi kuis dalam menit
+  duration            Int?      
   deadline            DateTime
   submissionStartDate DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  // Relasi
   authorId String
   author   User   @relation("UserQuizzes", fields: [authorId], references: [id], onDelete: Cascade)
   questions    Question[]
@@ -121,23 +111,22 @@ model Question {
   id       String       @id @default(cuid())
   text     String       @db.Text
   imageUrl String?      @db.Text
-  options  Json         // Pilihan ganda, atau jawaban benar untuk tipe lain
-  type     QuestionType // MULTIPLE_CHOICE, TRUE_FALSE, ESSAY
-  correctAnswerKeywords String?  // Field for essay question keywords
-
-  // Relasi
+  options  Json         
+  type     QuestionType 
+  correctAnswerKeywords String?
   quizId      String
   quiz        Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizAnswers QuizAnswer[]
 
   @@index([quizId])
 }
+
 model QuizAttempt {
   id                String            @id @default(cuid())
   score             Float
   submittedAt       DateTime          @default(now())
   status            QuizAttemptStatus @default(IN_PROGRESS)
-  progress          Json?             // Menyimpan progres jawaban sementara
+  progress          Json?            
   timeLeftInSeconds Int?
   violationCount    Int?              @default(0)
   quizId            String
@@ -145,6 +134,7 @@ model QuizAttempt {
   studentId         String
   student           User              @relation("UserQuizAttempts", fields: [studentId], references: [id], onDelete: Cascade)
   answers           QuizAnswer[]
+
   @@unique([quizId, studentId])
   @@index([quizId])
   @@index([studentId])
@@ -153,10 +143,8 @@ model QuizAttempt {
 model QuizAnswer {
   id                  String  @id @default(cuid())
   isCorrect           Boolean
-  selectedOptionIndex Int?    // Untuk MULTIPLE_CHOICE atau TRUE_FALSE
-  answerText          String? @db.Text // Untuk ESSAY
-
-  // Relasi
+  selectedOptionIndex Int?
+  answerText          String? @db.Text
   attemptId  String
   attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId String
@@ -171,10 +159,9 @@ model Material {
   id          String   @id @default(cuid())
   title       String
   description String?  @db.Text
-  driveUrl    String   // URL Google Drive untuk materi
+  driveUrl    String
   authorId    String
-    thumbnailUrl String?  // <-- DITAMBAHKAN: URL untuk gambar thumbnail (opsional)
-
+  thumbnailUrl String?
   author      User     @relation("UserMaterials", fields: [authorId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
@@ -183,21 +170,17 @@ model Material {
 
 model Attendance {
   id        String           @id @default(cuid())
-  date      DateTime         @db.Date // Hanya menyimpan tanggal, tanpa waktu
+  date      DateTime         @db.Date
   status    AttendanceStatus
-  notes     String?          @db.Text // Catatan dari siswa jika izin
+  notes     String?          @db.Text
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  // Relasi ke siswa yang melakukan absensi
   studentId String
   student   User             @relation("UserAttendances", fields: [studentId], references: [id], onDelete: Cascade)
-
-  // Relasi ke admin/mentor yang menandai (opsional)
   markedById String?
   markedBy   User?            @relation("MarkedAttendances", fields: [markedById], references: [id], onDelete: SetNull)
 
-  // Siswa hanya bisa memiliki satu status absensi per hari
   @@unique([studentId, date])
   @@index([studentId])
   @@index([markedById])
