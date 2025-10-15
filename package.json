@@ -20,6 +20,7 @@
     "express",
     "prisma",
     "mysql"
+    
   ],
   "author": "",
   "license": "ISC",
